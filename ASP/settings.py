@@ -4,6 +4,11 @@ from django.conf import settings
 from django.core.management import utils
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_FRONTEND_ORIGINS = [
+    "https://agentic-soc-console-ennzhr8lg-eyyan1s-projects.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 try:
     SECRET_KEY = os.environ['SECRET_KEY']
@@ -23,7 +28,7 @@ ALLOWED_HOSTS = ['*']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'Core.cors.SimpleCorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -166,6 +171,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
 
@@ -173,6 +179,15 @@ INSTALLED_APPS = [
     'Core.apps.CoreConfig',
 ]
 APPEND_SLASH = False
+
+_configured_frontend_origins = [
+    origin.strip().rstrip('/')
+    for origin in os.getenv("ASF_ALLOWED_FRONTEND_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+CORS_ALLOWED_ORIGINS = list(dict.fromkeys(DEFAULT_FRONTEND_ORIGINS + _configured_frontend_origins))
+CORS_URLS_REGEX = r"^/api/.*$"
 
 CACHES = {
     "default": {

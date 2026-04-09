@@ -56,7 +56,7 @@ ASF_DISABLE_EMBEDDINGS=1
 ASF_ENABLE_BACKGROUND_SERVICES=0
 ASF_PROCESS_ROLE=web
 ASF_LOCAL_DATA_DIR=/var/data
-ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console.vercel.app
+ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console-ennzhr8lg-eyyan1s-projects.vercel.app
 ```
 
 If you attach a persistent disk, mount it at:
@@ -73,13 +73,13 @@ If you attach a persistent disk, mount it at:
 For deployed frontends, add the exact Vercel origin, for example:
 
 ```text
-ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console.vercel.app
+ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console-ennzhr8lg-eyyan1s-projects.vercel.app
 ```
 
 Multiple origins:
 
 ```text
-ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console.vercel.app,https://staging-agentic-soc-console.vercel.app
+ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console-ennzhr8lg-eyyan1s-projects.vercel.app,https://staging-agentic-soc-console.vercel.app
 ```
 
 ## Build command
@@ -112,15 +112,18 @@ This is preferred over `runserver` for Render.
 
 ## CORS behavior
 
-The backend now includes a lightweight in-repo CORS middleware for demo deployment:
+The backend now uses `django-cors-headers` for demo deployment:
 
-- allows the configured frontend origins above
-- allows local Vite dev origins by default
-- supports authenticated cross-origin requests for:
-  - `/api/currentUser`
+- allows these origins by default:
+  - `https://agentic-soc-console-ennzhr8lg-eyyan1s-projects.vercel.app`
+  - `http://localhost:5173`
+  - `http://127.0.0.1:5173`
+- adds any extra deployed frontend origins from `ASF_ALLOWED_FRONTEND_ORIGINS`
+- supports browser preflight `OPTIONS` for:
   - `/api/login/account`
+  - `/api/currentUser`
   - `/api/local-dev/*`
-- handles browser preflight `OPTIONS` requests without importing the heavier local-dev SOC modules
+  - `/api/health`
 
 ## Health check
 
