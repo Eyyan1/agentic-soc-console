@@ -13,6 +13,21 @@ The public Render web service should:
 
 It should not start the SOC background pipeline in the same web process.
 
+## Startup-safety changes
+
+To keep Render port binding non-blocking in demo mode, the web startup path now avoids eager local-dev SOC imports:
+
+- `ASP/urls.py`
+  - no longer imports `Core.localdev_views` at module import time
+  - uses explicit URL patterns with lazy dispatch for local-dev endpoints
+- `Core/views.py`
+  - no longer imports `Lib.api` during startup
+  - `/api/health` uses a small local response helper
+- `Lib/api.py`
+  - DNS, domain parsing, and Excel libraries now import inside the helper functions that actually use them
+
+This keeps `/` and `/api/health` light while preserving the rest of the local-dev API behavior on first request.
+
 ## Process role split
 
 This repo now supports:

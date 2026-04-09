@@ -15,11 +15,6 @@ from collections import OrderedDict
 from io import BytesIO
 from urllib.parse import urlparse
 
-import dns.resolver
-import tldextract
-from openpyxl import Workbook
-from openpyxl import load_workbook
-from openpyxl.utils.exceptions import InvalidFileException
 
 
 def timestamp_to_string(timestamp, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
@@ -172,6 +167,8 @@ def is_domain(url):
 
 
 def is_root_domain(domain):
+    import tldextract
+
     ext = tldextract.extract(domain)
     return ext.fqdn == domain and not ext.subdomain
 
@@ -323,6 +320,8 @@ def is_ipaddress_port_in_use(ip, port):
 
 
 def get_dns_cname(domain):
+    import dns.resolver
+
     try:
         # 创建一个DNS解析器
         resolver = dns.resolver.Resolver()
@@ -344,6 +343,8 @@ def get_dns_cname(domain):
 
 
 def get_dns_a(domain):
+    import dns.resolver
+
     try:
         # 创建一个DNS解析器
         resolver = dns.resolver.Resolver()
@@ -363,6 +364,8 @@ def get_dns_a(domain):
 
 
 def write_list_of_dict_to_excel_sheet(data_list: list[dict], file_path: str = '', sheet_name: str = None, return_content=False):
+    from openpyxl import Workbook, load_workbook
+
     """
     仅使用 openpyxl 库将字典列表中的数据写入指定的 XLSX 文件和 sheet.
 
@@ -437,6 +440,9 @@ def write_list_of_dict_to_excel_sheet(data_list: list[dict], file_path: str = ''
 
 
 def read_excel_sheet_to_list_of_dict(file_path: str, sheet_name: str) -> list[dict]:
+    from openpyxl import load_workbook
+    from openpyxl.utils.exceptions import InvalidFileException
+
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"文件不存在: {file_path}")
 

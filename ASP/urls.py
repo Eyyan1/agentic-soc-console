@@ -1,49 +1,87 @@
 from django.contrib import admin
-from django.urls import re_path, include
-from rest_framework import routers
+from django.urls import re_path
 
-from Core.localdev_views import (
-    LocalDevAlertsView,
-    LocalDevAssetsView,
-    LocalDevAuditView,
-    LocalDevCampaignsView,
-    LocalDevCaseWorkflowView,
-    LocalDevCasesView,
-    LocalDevDemoAlertsView,
-    LocalDevFIMScanView,
-    LocalDevMessagesView,
-    LocalDevOverviewView,
-    LocalDevPlaybooksView,
-    LocalDevResponseActionsView,
-    LocalDevResponseJobsView,
-    LocalDevVulnerabilityScanView,
-)
+from Core.lazy_dispatch import lazy_viewset
 from Core.probes import root_probe
 from Core.views import BaseAuthView, CurrentUserView, HealthView
 
 
-router = routers.DefaultRouter(trailing_slash=False)
-router.register(r'api/login/account', BaseAuthView, basename="BaseAuth")
-router.register(r'api/currentUser', CurrentUserView, basename="CurrentUser")
-router.register(r'api/health', HealthView, basename="Health")
-router.register(r'api/local-dev/overview', LocalDevOverviewView, basename="LocalDevOverview")
-router.register(r'api/local-dev/alerts', LocalDevAlertsView, basename="LocalDevAlerts")
-router.register(r'api/local-dev/assets', LocalDevAssetsView, basename="LocalDevAssets")
-router.register(r'api/local-dev/campaigns', LocalDevCampaignsView, basename="LocalDevCampaigns")
-router.register(r'api/local-dev/cases', LocalDevCasesView, basename="LocalDevCases")
-router.register(r'api/local-dev/case-workflow', LocalDevCaseWorkflowView, basename="LocalDevCaseWorkflow")
-router.register(r'api/local-dev/playbooks', LocalDevPlaybooksView, basename="LocalDevPlaybooks")
-router.register(r'api/local-dev/messages', LocalDevMessagesView, basename="LocalDevMessages")
-router.register(r'api/local-dev/audit', LocalDevAuditView, basename="LocalDevAudit")
-router.register(r'api/local-dev/response-jobs', LocalDevResponseJobsView, basename="LocalDevResponseJobs")
-router.register(r'api/local-dev/respond', LocalDevResponseActionsView, basename="LocalDevResponseActions")
-router.register(r'api/local-dev/demo-alerts', LocalDevDemoAlertsView, basename="LocalDevDemoAlerts")
-router.register(r'api/local-dev/fim-scan', LocalDevFIMScanView, basename="LocalDevFIMScan")
-router.register(r'api/local-dev/vulnerability-scan', LocalDevVulnerabilityScanView, basename="LocalDevVulnerabilityScan")
-
-
 urlpatterns = [
-    re_path(r'^$', root_probe),
-    re_path(r'^admin/', admin.site.urls),
-    re_path(r'^', include(router.urls)),
+    re_path(r"^$", root_probe),
+    re_path(r"^admin/", admin.site.urls),
+    re_path(r"^api/login/account$", BaseAuthView.as_view({"post": "create"})),
+    re_path(r"^api/currentUser$", CurrentUserView.as_view({"get": "list"})),
+    re_path(r"^api/health$", HealthView.as_view({"get": "list"})),
+    re_path(
+        r"^api/local-dev/overview$",
+        lazy_viewset("Core.localdev_views", "LocalDevOverviewView", {"get": "list"}),
+    ),
+    re_path(
+        r"^api/local-dev/alerts$",
+        lazy_viewset("Core.localdev_views", "LocalDevAlertsView", {"get": "list"}),
+    ),
+    re_path(
+        r"^api/local-dev/alerts/(?P<pk>[^/]+)$",
+        lazy_viewset("Core.localdev_views", "LocalDevAlertsView", {"get": "retrieve"}),
+    ),
+    re_path(
+        r"^api/local-dev/assets$",
+        lazy_viewset("Core.localdev_views", "LocalDevAssetsView", {"get": "list"}),
+    ),
+    re_path(
+        r"^api/local-dev/assets/(?P<pk>[^/]+)$",
+        lazy_viewset("Core.localdev_views", "LocalDevAssetsView", {"get": "retrieve"}),
+    ),
+    re_path(
+        r"^api/local-dev/campaigns$",
+        lazy_viewset("Core.localdev_views", "LocalDevCampaignsView", {"get": "list"}),
+    ),
+    re_path(
+        r"^api/local-dev/cases$",
+        lazy_viewset("Core.localdev_views", "LocalDevCasesView", {"get": "list"}),
+    ),
+    re_path(
+        r"^api/local-dev/cases/(?P<pk>[^/]+)$",
+        lazy_viewset("Core.localdev_views", "LocalDevCasesView", {"get": "retrieve"}),
+    ),
+    re_path(
+        r"^api/local-dev/case-workflow$",
+        lazy_viewset("Core.localdev_views", "LocalDevCaseWorkflowView", {"post": "create"}),
+    ),
+    re_path(
+        r"^api/local-dev/playbooks$",
+        lazy_viewset("Core.localdev_views", "LocalDevPlaybooksView", {"get": "list"}),
+    ),
+    re_path(
+        r"^api/local-dev/playbooks/(?P<pk>[^/]+)$",
+        lazy_viewset("Core.localdev_views", "LocalDevPlaybooksView", {"get": "retrieve"}),
+    ),
+    re_path(
+        r"^api/local-dev/messages$",
+        lazy_viewset("Core.localdev_views", "LocalDevMessagesView", {"get": "list"}),
+    ),
+    re_path(
+        r"^api/local-dev/audit$",
+        lazy_viewset("Core.localdev_views", "LocalDevAuditView", {"get": "list"}),
+    ),
+    re_path(
+        r"^api/local-dev/response-jobs$",
+        lazy_viewset("Core.localdev_views", "LocalDevResponseJobsView", {"get": "list"}),
+    ),
+    re_path(
+        r"^api/local-dev/respond$",
+        lazy_viewset("Core.localdev_views", "LocalDevResponseActionsView", {"post": "create"}),
+    ),
+    re_path(
+        r"^api/local-dev/demo-alerts$",
+        lazy_viewset("Core.localdev_views", "LocalDevDemoAlertsView", {"post": "create"}),
+    ),
+    re_path(
+        r"^api/local-dev/fim-scan$",
+        lazy_viewset("Core.localdev_views", "LocalDevFIMScanView", {"post": "create"}),
+    ),
+    re_path(
+        r"^api/local-dev/vulnerability-scan$",
+        lazy_viewset("Core.localdev_views", "LocalDevVulnerabilityScanView", {"post": "create"}),
+    ),
 ]
