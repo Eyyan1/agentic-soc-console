@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.urls import re_path, include
 from rest_framework import routers
-import os
 
 from Core.localdev_views import (
     LocalDevAlertsView,
@@ -19,6 +18,7 @@ from Core.localdev_views import (
     LocalDevResponseJobsView,
     LocalDevVulnerabilityScanView,
 )
+from Core.probes import root_probe
 from Core.views import BaseAuthView, CurrentUserView, HealthView
 
 
@@ -43,6 +43,7 @@ router.register(r'api/local-dev/vulnerability-scan', LocalDevVulnerabilityScanVi
 
 
 urlpatterns = [
+    re_path(r'^$', root_probe),
     re_path(r'^admin/', admin.site.urls),
     re_path(r'^', include(router.urls)),
 ]

@@ -9,6 +9,7 @@ The public Render web service should:
 - boot quickly
 - bind `0.0.0.0:$PORT`
 - serve Django HTTP traffic only
+- expose a tiny unauthenticated root probe at `/`
 
 It should not start the SOC background pipeline in the same web process.
 
@@ -51,8 +52,14 @@ If you attach a persistent disk, mount it at:
 ## Build command
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-demo.txt
 ```
+
+`requirements-demo.txt` is intentionally lean for demo web deployments:
+
+- keeps Django, DRF, ASGI serving, and Redis/Qdrant client packages needed by current local-dev API imports
+- removes heavy ML/runtime packages not needed for fake-LLM plus embeddings-disabled demo mode
+- leaves the full `requirements.txt` unchanged for broader local development
 
 ## Pre-deploy command
 
@@ -78,6 +85,8 @@ Set the Render health check path to:
 /api/health
 ```
 
+The root path `/` now returns a tiny unauthenticated JSON probe for platform port checks and lightweight smoke tests, but `/api/health` remains the main health endpoint.
+
 Expected result:
 
 - HTTP `200`
@@ -95,6 +104,7 @@ Recommended future deployment:
 2. Background worker
    - `ASF_PROCESS_ROLE=worker`
    - `ASF_ENABLE_BACKGROUND_SERVICES=1`
+   - install the full `requirements.txt`
 
 That keeps the web service responsive while letting the SOC pipeline run separately.
 
