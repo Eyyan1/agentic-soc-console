@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from Lib.api import data_return
 from Lib.baseview import BaseView
 from Lib.configs import get_local_data_path
+from Lib.log import logger
 from Core.localdev_playbooks import select_local_case_playbook_name
 from Core.localdev_soc import (
     generate_fim_demo,
@@ -47,6 +48,7 @@ LOCAL_RESPONSE_JOB_LOG_PATH = Path(get_local_data_path("local_soc_response_jobs.
 def _require_local_dev_api():
     if not LOCAL_DEV_API_ENABLED:
         raise NotFound("Local-dev SOC API is only available when ASF_LOCAL_SIRP=1.")
+    _bootstrap_local_dev_state()
 
 
 def _extract_email(value: str) -> str:
@@ -119,6 +121,56 @@ def _risk_to_score(severity, criticality="Medium") -> int:
 
 def _ensure_runtime_dir():
     LOCAL_AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not LOCAL_AUDIT_LOG_PATH.exists():
+        LOCAL_AUDIT_LOG_PATH.write_text("[]", encoding="utf-8")
+    if not LOCAL_RESPONSE_JOB_LOG_PATH.exists():
+        LOCAL_RESPONSE_JOB_LOG_PATH.write_text("[]", encoding="utf-8")
+
+
+def _bootstrap_local_dev_state():
+    _ensure_runtime_dir()
+    try:
+        list_assets()
+    except Exception:
+        logger.exception("Failed to initialize local asset inventory; continuing with empty fallback state.")
+
+
+def _empty_overview_payload() -> dict:
+    return {
+        "stats": {
+            "alerts": 0,
+            "cases": 0,
+            "playbooks": 0,
+            "messages": 0,
+            "assets": 0,
+            "critical_alerts": 0,
+            "running_playbooks": 0,
+            "open_cases": 0,
+            "campaigns": 0,
+            "mtta_minutes": 0,
+            "mttr_minutes": 0,
+        },
+        "metrics": {
+            "severity_distribution": [],
+            "top_assets": [],
+            "top_users": [],
+            "top_campaigns": [],
+            "agent_status": [
+                {"name": "Online", "count": 0},
+                {"name": "Attention", "count": 0},
+                {"name": "Contained", "count": 0},
+            ],
+        },
+        "recent_activity": [],
+    }
+
+
+def _safe_local_dev_items(loader, label: str) -> list:
+    try:
+        return loader()
+    except Exception:
+        logger.exception("Local-dev endpoint fallback activated for %s.", label)
+        return []
 
 
 def _load_audit_entries() -> list[dict]:
@@ -875,12 +927,21 @@ def _calculate_top_entities(alerts: list[dict], key: str, limit: int = 5) -> lis
 
 
 def _get_store_counts() -> dict:
-    return {
-        "alerts": len(Alert.list(Group(), lazy_load=True)),
-        "cases": len(Case.list(Group(), lazy_load=True)),
-        "playbooks": len(Playbook.list(Group(), lazy_load=True)),
-        "messages": len(Message.list(Group(), lazy_load=True)),
-    }
+    try:
+        return {
+            "alerts": len(Alert.list(Group(), lazy_load=True)),
+            "cases": len(Case.list(Group(), lazy_load=True)),
+            "playbooks": len(Playbook.list(Group(), lazy_load=True)),
+            "messages": len(Message.list(Group(), lazy_load=True)),
+        }
+    except Exception:
+        logger.exception("Failed to read local SIRP counts; returning zeroed demo counts.")
+        return {
+            "alerts": 0,
+            "cases": 0,
+            "playbooks": 0,
+            "messages": 0,
+        }
 
 
 def _message_links_playbook(message_payload: dict, playbook_rowid: str) -> bool:
@@ -1029,11 +1090,60 @@ def _serialize_playbook_detail(playbook_model) -> dict:
 class LocalDevOverviewView(BaseView):
     def list(self, request, **kwargs):
         _require_local_dev_api()
+        try:
+            alerts = [_serialize_alert(item) for item in Alert.list(Group(), lazy_load=True)]
+            playbooks = [_serialize_playbook(item) for item in Playbook.list(Group(), lazy_load=True)]
+            messages = [_serialize_message(item) for item in Message.list(Group(), lazy_load=True)]
+            audits = [_serialize_audit_entry(item) for item in _load_audit_entries()]
+            playbooks_by_source = {}
+            for playbook in playbooks:
+                playbooks_by_source.setdefault(playbook["source_rowid"], []).append(playbook)
+            cases = [_serialize_case(item, playbooks_by_source) for item in Case.list(Group(), lazy_load=True)]
+            campaigns = _build_all_campaigns_from_store()
+            severity_distribution = Counter(item.get("severity") or "Unknown" for item in alerts)
+            assets = [_serialize_asset(item) for item in list_assets()]
+            payload = {
+                "stats": {
+                    "alerts": len(alerts),
+                    "cases": len(cases),
+                    "playbooks": len(playbooks),
+                    "messages": len(messages),
+                    "assets": len(assets),
+                    "critical_alerts": sum(1 for item in alerts if item["severity"] == "Critical"),
+                    "running_playbooks": sum(1 for item in playbooks if item["status"] == "Running"),
+                    "open_cases": sum(1 for item in cases if item.get("status") not in {"Resolved", "Closed"}),
+                    "campaigns": len(campaigns),
+                    "mtta_minutes": 8,
+                    "mttr_minutes": 42,
+                },
+                "metrics": {
+                    "severity_distribution": [{"name": name, "count": count} for name, count in severity_distribution.items()],
+                    "top_assets": _calculate_top_entities(alerts, "target"),
+                    "top_users": _calculate_top_entities(alerts, "target"),
+                    "top_campaigns": [{"name": item["name"], "count": item["alert_count"]} for item in campaigns[:5]],
+                    "agent_status": [
+                        {"name": "Online", "count": sum(1 for item in assets if item.get("status") == "Online")},
+                        {"name": "Attention", "count": sum(1 for item in assets if item.get("status") == "Attention")},
+                        {"name": "Contained", "count": sum(1 for item in assets if item.get("status") == "Contained")},
+                    ],
+                },
+                "recent_activity": sorted(
+                    messages + audits,
+                    key=lambda item: _normalize_timestamp(item.get("ts")),
+                    reverse=True,
+                )[:12],
+            }
+        except Exception:
+            logger.exception("Local-dev overview failed; returning empty overview payload.")
+            payload = _empty_overview_payload()
+        return Response(data_return(200, payload, "æˆåŠŸ", "Success"))
 
-        alerts = [_serialize_alert(item) for item in Alert.list(Group(), lazy_load=True)]
-        playbooks = [_serialize_playbook(item) for item in Playbook.list(Group(), lazy_load=True)]
-        messages = [_serialize_message(item) for item in Message.list(Group(), lazy_load=True)]
-        audits = [_serialize_audit_entry(item) for item in _load_audit_entries()]
+        """
+        try:
+            alerts = [_serialize_alert(item) for item in Alert.list(Group(), lazy_load=True)]
+            playbooks = [_serialize_playbook(item) for item in Playbook.list(Group(), lazy_load=True)]
+            messages = [_serialize_message(item) for item in Message.list(Group(), lazy_load=True)]
+            audits = [_serialize_audit_entry(item) for item in _load_audit_entries()]
         playbooks_by_source = {}
         for playbook in playbooks:
             playbooks_by_source.setdefault(playbook["source_rowid"], []).append(playbook)
@@ -1075,11 +1185,19 @@ class LocalDevOverviewView(BaseView):
         context = data_return(200, {"stats": stats, "metrics": metrics, "recent_activity": recent_activity}, "成功", "Success")
         return Response(context)
 
+        """
+
 
 class LocalDevAlertsView(BaseView):
     def list(self, request, **kwargs):
         _require_local_dev_api()
         query = request.query_params.get("q", "").strip().lower()
+        items = []
+        for alert_model in _safe_local_dev_items(lambda: Alert.list(Group(), lazy_load=True), "alerts"):
+            payload = _serialize_alert(alert_model)
+            if _matches_query(payload, query, ["title", "rule_id", "rule_name", "target", "sender", "summary", "rowid"]):
+                items.append(payload)
+        return Response(data_return(200, items, "æˆåŠŸ", "Success"))
         items = []
         for alert_model in Alert.list(Group(), lazy_load=True):
             payload = _serialize_alert(alert_model)
@@ -1099,6 +1217,17 @@ class LocalDevCasesView(BaseView):
     def list(self, request, **kwargs):
         _require_local_dev_api()
         query = request.query_params.get("q", "").strip().lower()
+        playbooks_by_source = {}
+        for playbook_model in _safe_local_dev_items(lambda: Playbook.list(Group(), lazy_load=True), "cases.playbooks"):
+            payload = _serialize_playbook(playbook_model)
+            playbooks_by_source.setdefault(payload["source_rowid"], []).append(payload)
+
+        items = []
+        for case_model in _safe_local_dev_items(lambda: Case.list(Group(), lazy_load=True), "cases"):
+            payload = _serialize_case(case_model, playbooks_by_source)
+            if _matches_query(payload, query, ["title", "correlation_uid", "playbook", "rowid"]):
+                items.append(payload)
+        return Response(data_return(200, items, "æˆåŠŸ", "Success"))
         playbooks_by_source = {}
         for playbook_model in Playbook.list(Group(), lazy_load=True):
             payload = _serialize_playbook(playbook_model)
@@ -1123,6 +1252,22 @@ class LocalDevCampaignsView(BaseView):
     def list(self, request, **kwargs):
         _require_local_dev_api()
         query = request.query_params.get("q", "").strip().lower()
+        items = _safe_local_dev_items(_build_all_campaigns_from_store, "campaigns")
+        if query:
+            filtered = []
+            for item in items:
+                payload = {
+                    "name": item.get("name"),
+                    "users": " ".join(item.get("users", [])),
+                    "assets": " ".join(item.get("assets", [])),
+                    "domains": " ".join(item.get("domains", [])),
+                    "ips": " ".join(item.get("ips", [])),
+                    "attack_summary": " ".join(item.get("attack_summary", [])),
+                }
+                if _matches_query(payload, query, ["name", "users", "assets", "domains", "ips", "attack_summary"]):
+                    filtered.append(item)
+            items = filtered
+        return Response(data_return(200, items, "æˆåŠŸ", "Success"))
         items = _build_all_campaigns_from_store()
         if query:
             filtered = []
@@ -1147,6 +1292,12 @@ class LocalDevPlaybooksView(BaseView):
         _require_local_dev_api()
         query = request.query_params.get("q", "").strip().lower()
         items = []
+        for playbook_model in _safe_local_dev_items(lambda: Playbook.list(Group(), lazy_load=True), "playbooks"):
+            payload = _serialize_playbook(playbook_model)
+            if _matches_query(payload, query, ["name", "status", "source_rowid", "job_id", "rowid"]):
+                items.append(payload)
+        return Response(data_return(200, items, "æˆåŠŸ", "Success"))
+        items = []
         for playbook_model in Playbook.list(Group(), lazy_load=True):
             payload = _serialize_playbook(playbook_model)
             if _matches_query(payload, query, ["name", "status", "source_rowid", "job_id", "rowid"]):
@@ -1166,6 +1317,12 @@ class LocalDevMessagesView(BaseView):
         _require_local_dev_api()
         query = request.query_params.get("q", "").strip().lower()
         items = []
+        for message_model in _safe_local_dev_items(lambda: Message.list(Group(), lazy_load=True), "messages"):
+            payload = _serialize_message(message_model)
+            if _matches_query(payload, query, ["role", "node", "content", "rowid"]):
+                items.append(payload)
+        return Response(data_return(200, items, "æˆåŠŸ", "Success"))
+        items = []
         for message_model in Message.list(Group(), lazy_load=True):
             payload = _serialize_message(message_model)
             if _matches_query(payload, query, ["role", "node", "content", "rowid"]):
@@ -1177,6 +1334,8 @@ class LocalDevMessagesView(BaseView):
 class LocalDevAuditView(BaseView):
     def list(self, request, **kwargs):
         _require_local_dev_api()
+        items = [_serialize_audit_entry(item) for item in _safe_local_dev_items(_load_audit_entries, "audit")]
+        return Response(data_return(200, items, "æˆåŠŸ", "Success"))
         items = [_serialize_audit_entry(item) for item in _load_audit_entries()]
         context = data_return(200, items, "成功", "Success")
         return Response(context)
@@ -1185,6 +1344,8 @@ class LocalDevAuditView(BaseView):
 class LocalDevResponseJobsView(BaseView):
     def list(self, request, **kwargs):
         _require_local_dev_api()
+        items = [_serialize_response_job(item) for item in _safe_local_dev_items(_load_response_jobs, "response-jobs")]
+        return Response(data_return(200, items, "æˆåŠŸ", "Success"))
         items = [_serialize_response_job(item) for item in _load_response_jobs()]
         context = data_return(200, items, "成功", "Success")
         return Response(context)
@@ -1194,6 +1355,12 @@ class LocalDevAssetsView(BaseView):
     def list(self, request, **kwargs):
         _require_local_dev_api()
         query = request.query_params.get("q", "").strip().lower()
+        items = []
+        for asset in _safe_local_dev_items(list_assets, "assets"):
+            payload = _serialize_asset(asset)
+            if _matches_query(payload, query, ["hostname", "owner", "criticality", "status", "site", "ip_address"]):
+                items.append(payload)
+        return Response(data_return(200, items, "æˆåŠŸ", "Success"))
         items = []
         for asset in list_assets():
             payload = _serialize_asset(asset)

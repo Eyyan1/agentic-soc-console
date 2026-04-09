@@ -54,6 +54,11 @@ def _ensure_local_sirp_dir():
 def _load_local_sirp_store() -> Dict[str, Dict[str, dict]]:
     _ensure_local_sirp_dir()
     if not os.path.exists(LOCAL_SIRP_STORE_PATH):
+        with _LOCAL_SIRP_LOCK:
+            if not os.path.exists(LOCAL_SIRP_STORE_PATH):
+                with open(LOCAL_SIRP_STORE_PATH, "w", encoding="utf-8") as f:
+                    json.dump({}, f, ensure_ascii=False, indent=2)
+    if not os.path.exists(LOCAL_SIRP_STORE_PATH):
         return {}
     try:
         with open(LOCAL_SIRP_STORE_PATH, "r", encoding="utf-8") as f:

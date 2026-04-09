@@ -5,11 +5,9 @@ from email.utils import parseaddr
 from typing import List, Union, Annotated
 
 import requests
-from langchain_core.documents import Document
 
 from Core.localdev_playbooks import select_local_case_playbook_name
 from Lib.log import logger
-from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant, SIRP_KNOWLEDGE_COLLECTION
 try:
     from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
 except ModuleNotFoundError:
@@ -22,6 +20,21 @@ from PLUGINS.SIRP.sirpmodel import EnrichmentModel, ArtifactModel, AlertModel, C
 
 
 LOCAL_SIRP_ENABLED = os.getenv("ASF_LOCAL_SIRP", "0") == "1"
+SIRP_KNOWLEDGE_COLLECTION = "SIRP_KNOWLEDGE_COLLECTION"
+
+
+def _get_embeddings_search_client():
+    if os.getenv("ASF_DISABLE_EMBEDDINGS", "0") == "1":
+        return None, SIRP_KNOWLEDGE_COLLECTION
+    try:
+        from PLUGINS.Embeddings.embeddings_qdrant import (
+            SIRP_KNOWLEDGE_COLLECTION as collection_name,
+            embedding_api_singleton_qdrant,
+        )
+        return embedding_api_singleton_qdrant, collection_name
+    except Exception:
+        logger.exception("Embeddings client is unavailable; returning empty knowledge search results.")
+        return None, SIRP_KNOWLEDGE_COLLECTION
 
 def _is_local_phishing_alert(alert_model: AlertModel) -> bool:
     labels = set(alert_model.labels or [])
@@ -751,12 +764,20 @@ class Knowledge(BaseWorksheetEntity[KnowledgeModel]):
         Search the internal knowledge base for specific entities, business-specific logic, SOPs, or historical context.
         """
         logger.debug(f"knowledge search : {query}")
+        embedding_client, collection_name = _get_embeddings_search_client()
+        if embedding_client is None:
+            logger.info("Knowledge search skipped because embeddings are disabled or unavailable.")
+            return "[]"
         threshold = 0.5
         result_all = []
-        docs_qdrant = embedding_api_singleton_qdrant.search_documents_with_rerank(collection_name=SIRP_KNOWLEDGE_COLLECTION, query=query, k=10, top_n=3)
+        docs_qdrant = embedding_client.search_documents_with_rerank(
+            collection_name=collection_name,
+            query=query,
+            k=10,
+            top_n=3,
+        )
         logger.debug(docs_qdrant)
         for doc in docs_qdrant:
-            doc: Document
             if doc.metadata["rerank_score"] >= threshold:
                 result_all.append(doc.page_content)
 

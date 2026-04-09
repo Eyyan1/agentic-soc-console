@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from Core.localdev_playbooks import select_local_case_playbook_name
+from Lib.configs import get_local_data_path
 from PLUGINS.SIRP.nocolymodel import Group
 from PLUGINS.SIRP.sirpapi import Alert, Case, Playbook
 from PLUGINS.SIRP.sirpmodel import (
@@ -22,9 +23,7 @@ from PLUGINS.SIRP.sirpmodel import (
     Severity,
 )
 
-
-ROOT_DIR = Path(__file__).resolve().parents[1]
-LOCAL_ASSET_INVENTORY_PATH = ROOT_DIR / ".runtime" / "local_asset_inventory.json"
+LOCAL_ASSET_INVENTORY_PATH = Path(get_local_data_path("local_asset_inventory.json"))
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
