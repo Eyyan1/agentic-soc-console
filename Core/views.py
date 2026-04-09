@@ -79,6 +79,7 @@ class HealthView(BaseView):
         payload = {
             "status": "ok",
             "mode": "local-demo" if flags["ASF_LOCAL_SIRP"] else "standard",
+            "process_role": os.getenv("ASF_PROCESS_ROLE", "all"),
             "flags": flags,
             "local_data_dir": get_local_data_dir(),
             "response_actions": {

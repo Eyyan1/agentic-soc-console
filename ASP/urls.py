@@ -46,8 +46,3 @@ urlpatterns = [
     re_path(r'^admin/', admin.site.urls),
     re_path(r'^', include(router.urls)),
 ]
-
-if os.getenv("ASF_ENABLE_BACKGROUND_SERVICES", "0") == "1":
-    from Lib.montior import MainMonitor
-
-    MainMonitor().start()

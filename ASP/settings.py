@@ -168,7 +168,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
 
     'channels',
-    'Core',
+    'Core.apps.CoreConfig',
 ]
 APPEND_SLASH = False
 
