@@ -123,7 +123,8 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'Core.Handle.baseauth.BaseAuth',
-    )
+    ),
+    'EXCEPTION_HANDLER': 'Core.api_exceptions.custom_exception_handler',
 }
 TEMPLATES = [
     {

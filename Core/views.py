@@ -55,9 +55,14 @@ class BaseAuthView(ModelViewSet, UpdateAPIView, DestroyAPIView):
 
 class CurrentUserView(BaseView):
     def list(self, request, **kwargs):
+        if not getattr(request.user, "is_authenticated", False):
+            return Response(
+                _data_return(401, None, "未提供或无效的认证信息", "Authentication credentials were not provided."),
+                status=401,
+            )
         user_info = CurrentUser.list(request.user)
-        context = _data_return(301, user_info, BASEAUTH_MSG_ZH.get(301), BASEAUTH_MSG_EN.get(301))
-        return Response(context)
+        context = _data_return(200, user_info, "成功", "Success")
+        return Response(context, status=200)
 
 
 class HealthView(BaseView):
