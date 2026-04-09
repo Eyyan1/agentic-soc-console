@@ -1,20 +1,37 @@
-const DEFAULT_BACKEND_URL = "http://127.0.0.1:7000";
+const LOCAL_BACKEND_URL = "http://127.0.0.1:7000";
+const ENV_BACKEND_URL = (import.meta.env.VITE_API_URL || "").trim();
+const DEFAULT_BACKEND_URL = import.meta.env.DEV ? ENV_BACKEND_URL || LOCAL_BACKEND_URL : ENV_BACKEND_URL;
 
 function useProxyUrl(baseUrl) {
   const normalized = (baseUrl || "").trim();
-  return !normalized || normalized === DEFAULT_BACKEND_URL;
+  return import.meta.env.DEV && (!normalized || normalized === DEFAULT_BACKEND_URL || normalized === LOCAL_BACKEND_URL);
 }
 
 function buildUrl(baseUrl, path) {
   if (useProxyUrl(baseUrl)) {
     return path;
   }
-  return `${baseUrl.replace(/\/$/, "")}${path}`;
+  const normalized = (baseUrl || "").trim();
+  if (!normalized) {
+    return null;
+  }
+  return `${normalized.replace(/\/$/, "")}${path}`;
+}
+
+function ensureApiUrl(baseUrl) {
+  const url = buildUrl(baseUrl, "");
+  if (url === null) {
+    const error = new Error("Backend URL is required in production. Set VITE_API_URL or enter the backend URL manually.");
+    error.code = "CONFIG";
+    throw error;
+  }
+  return true;
 }
 
 async function requestJson(baseUrl, path, token) {
   let response;
   try {
+    ensureApiUrl(baseUrl);
     response = await fetch(buildUrl(baseUrl, path), {
       headers: token
         ? {
@@ -40,6 +57,7 @@ async function requestJson(baseUrl, path, token) {
 export async function loginWithPassword(baseUrl, username, password) {
   let response;
   try {
+    ensureApiUrl(baseUrl);
     response = await fetch(buildUrl(baseUrl, "/api/login/account"), {
       method: "POST",
       headers: {
@@ -74,6 +92,7 @@ export async function validateToken(baseUrl, token) {
 
 export async function probeBackend(baseUrl) {
   try {
+    ensureApiUrl(baseUrl);
     await fetch(buildUrl(baseUrl, "/api/currentUser"));
     return true;
   } catch {
@@ -130,6 +149,7 @@ export async function fetchPlaybookDetail(baseUrl, token, rowid) {
 export async function triggerResponseAction(baseUrl, token, body) {
   let response;
   try {
+    ensureApiUrl(baseUrl);
     response = await fetch(buildUrl(baseUrl, "/api/local-dev/respond"), {
       method: "POST",
       headers: {
@@ -157,6 +177,7 @@ export async function triggerResponseAction(baseUrl, token, body) {
 export async function updateCaseWorkflow(baseUrl, token, body) {
   let response;
   try {
+    ensureApiUrl(baseUrl);
     response = await fetch(buildUrl(baseUrl, "/api/local-dev/case-workflow"), {
       method: "POST",
       headers: {
@@ -184,6 +205,7 @@ export async function updateCaseWorkflow(baseUrl, token, body) {
 export async function generateDemoAlerts(baseUrl, token) {
   let response;
   try {
+    ensureApiUrl(baseUrl);
     response = await fetch(buildUrl(baseUrl, "/api/local-dev/demo-alerts"), {
       method: "POST",
       headers: {
@@ -209,6 +231,7 @@ export async function generateDemoAlerts(baseUrl, token) {
 async function postLocalAction(baseUrl, token, path) {
   let response;
   try {
+    ensureApiUrl(baseUrl);
     response = await fetch(buildUrl(baseUrl, path), {
       method: "POST",
       headers: {
