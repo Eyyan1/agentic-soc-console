@@ -1,0 +1,8 @@
+{
+  "name": "asp",
+  "version": "0.1.0",
+  "description": "Agentic SOC Platform integration for Claude Code",
+  "author": {
+    "name": "Funnywolf"
+  }
+}
