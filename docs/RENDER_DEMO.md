@@ -56,12 +56,30 @@ ASF_DISABLE_EMBEDDINGS=1
 ASF_ENABLE_BACKGROUND_SERVICES=0
 ASF_PROCESS_ROLE=web
 ASF_LOCAL_DATA_DIR=/var/data
+ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console.vercel.app
 ```
 
 If you attach a persistent disk, mount it at:
 
 ```text
 /var/data
+```
+
+`ASF_ALLOWED_FRONTEND_ORIGINS` is a comma-separated allowlist for browser frontend origins. The backend always allows these local dev origins by default:
+
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+
+For deployed frontends, add the exact Vercel origin, for example:
+
+```text
+ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console.vercel.app
+```
+
+Multiple origins:
+
+```text
+ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console.vercel.app,https://staging-agentic-soc-console.vercel.app
 ```
 
 ## Build command
@@ -91,6 +109,18 @@ gunicorn ASP.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$P
 ```
 
 This is preferred over `runserver` for Render.
+
+## CORS behavior
+
+The backend now includes a lightweight in-repo CORS middleware for demo deployment:
+
+- allows the configured frontend origins above
+- allows local Vite dev origins by default
+- supports authenticated cross-origin requests for:
+  - `/api/currentUser`
+  - `/api/login/account`
+  - `/api/local-dev/*`
+- handles browser preflight `OPTIONS` requests without importing the heavier local-dev SOC modules
 
 ## Health check
 
