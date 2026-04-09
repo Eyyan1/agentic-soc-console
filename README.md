@@ -1,72 +1,188 @@
-![cover-v5-optimized](Docker/IMG/img.png)
+# Agentic SOC Platform
 
-<p align="center">
-  <a href="https://asp.viperrtp.com/asf/Development/environment_setup/">Getting-started</a> ·
-  <a href="https://asp.viperrtp.com/asf/Introduction/what_is_asf/">Documentation</a>
-</p>
+Local-first Django SOC platform with:
 
-<p align="center">
-    <a href="https://asp.viperrtp.com/" target="_blank">
-        <img alt="Static Badge" src="https://img.shields.io/badge/Website-F04438"></a>
-    <a href="https://github.com/funnywolf/agentic-soc-platform/graphs/commit-activity" target="_blank">
-        <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/funnywolf/agentic-soc-platform?labelColor=%20%2332b583&color=%20%2312b76a"></a>
-    <a href="https://github.com/funnywolf/agentic-soc-platform/" target="_blank">
-        <img alt="Issues closed" src="https://img.shields.io/github/issues-search?query=repo%3Afunnywolf%2Fagentic-soc-platform%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
-    <a href="https://github.com/funnywolf/agentic-soc-platform/releases" target="_blank">
-        <img alt="Release" src="https://img.shields.io/github/v/release/funnywolf/agentic-soc-platform?style=flat&label=Release&color=limegreen"></a>
-    <a href="https://deepwiki.com/FunnyWolf/agentic-soc-platform"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
-</p>
+- token-authenticated backend API
+- file-backed local-demo SOC mode
+- Redis/Qdrant-supported pipeline execution
+- React/Tailwind frontend under `frontend/`
+- case, alert, playbook, campaign, asset, and response-job views
 
-<p align="center">
-  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
-  <a href="./README_ZH.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
-</p>
+This repository is currently set up to run well for local development and demo deployments without requiring an external SIRP backend or paid LLM usage.
 
+## What is in this repo
 
-**Agentic SOC Platform** A powerful, flexible, open-source, and agent-centric automated security operations platform.
+- Django backend in `ASP/`, `Core/`, `Lib/`, `PLUGINS/`
+- streaming and playbook automation in `MODULES/` and `PLAYBOOKS/`
+- bundled mock data and prompt assets in `DATA/`
+- local frontend in `frontend/`
+- deployment and local-dev docs in `docs/`
 
-## Core Features
+## Main capabilities
 
-- 🧠 **AI-driven Intelligence**: Utilizes built-in AI Agent templates like Langgraph and Dify, supporting local LLMs to
-  enhance alert analysis and automated response capabilities.
-- 📊 **Built-in SIRP Platform**: Comes with a ready-to-use Security Incident Response Platform (SIRP) built on Nocoly,
-  allowing for rapid customization of user interfaces, data models, reports, and workflows.
-- ⚙️ **Powerful Automation Workflow**: Achieves efficient alert processing through Webhook + Redis Stream, natively
-  supporting mainstream SIEM platforms such as Splunk and Kibana (ELK).
-- 🛠️ **Highly Extensible**: Provides a rich library of modules and plugins. The entire framework is written in Python,
-  facilitating secondary development and integration with various security devices and APIs.
-- 🛡️ **Local Deployment & Data Control**: Supports complete local deployment. All data, models, and operations can be
-  hosted within your own environment, ensuring enterprise data security and privacy.
-- ⚡ **Streaming and Batch Processing**: Offers streaming processing (modules) for real-time alert analysis and
-  event-driven automation (playbooks) for user-triggered tasks.
+- Local SOC dashboard with:
+  - alerts
+  - cases
+  - campaigns
+  - assets
+  - playbooks
+  - activity timeline
+  - response jobs
+- Local-dev correlation and campaign grouping
+- Deterministic fake-LLM mode for demos
+- Simulated active response actions:
+  - isolate host
+  - disable user
+  - block IP/domain/hash
+  - create ticket
+  - assign owner
+  - run playbook
+- Specialized local playbooks for:
+  - phishing
+  - file integrity monitoring
+  - vulnerability remediation
 
-## Architecture Overview
+## Architecture at a glance
 
-ASP processes security alerts and incidents through a simplified multi-stage process:
+The local demo flow is:
 
-1. **SIEM/Alert Sources**: EDR, NDR, or other security tools send alerts to a SIEM (e.g., Splunk, Kibana).
-2. **Webhook Forwarder**: The SIEM forwards these alerts via Webhook to the ASP's built-in Webhook receiver.
-3. **Redis Stream**: The receiver pushes the alerts to the corresponding Redis Stream, serving as a persistent message
-   queue. Each alert type has its own stream.
-4. **Module ModuleEngine**: ASP **modules** consume alerts from their designated streams, perform analysis (often using AI
-   Agents), enrich data, and determine outcomes.
-5. **SIRP Platform**: The output of the modules (now formatted into standardized security records) is sent to the **SIRP
-   ** platform, where cases, alerts, and artifacts are created or updated.
-6. **PlaybookLoader ModuleEngine**: Analysts can trigger **playbooks** from the SIRP user interface against cases, alerts, or
-   artifacts to perform further automated actions, such as threat intelligence enrichment or remediation.
+1. Mock or forwarded alerts are sent into Redis streams.
+2. Modules consume those alerts and normalize them.
+3. Local SIRP mode persists alerts, cases, artifacts, playbooks, audit history, and response jobs to file-backed storage.
+4. The frontend reads that state through `/api/local-dev/*`.
+5. Analysts can investigate alerts and cases, run playbooks, and trigger simulated response actions.
 
-![img_1.webp](Docker/IMG/img_20.png)
-![img_2.webp](Docker/IMG/img_21.png)
-![img_2.webp](Docker/IMG/img_22.png)
-![img_3.webp](Docker/IMG/img_23.png)
-![img_4.webp](Docker/IMG/img_24.png)
+## Quick start
 
-## Official Website
+### Backend
 
-[https://asp.viperrtp.com](https://asp.viperrtp.com)
+Use Python `3.12`.
 
-## 404Starlink
+Create and activate a virtual environment, then install dependencies:
 
-<img src="./Docker/IMG/logo.png" width="30%">
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\activate
+pip install -e .
+```
 
-Agentic SOC Platform has joined [404Starlink](https://github.com/knownsec/404StarLink)
+Run database migrations:
+
+```powershell
+python manage.py migrate
+```
+
+Start the backend:
+
+```powershell
+python manage.py runserver 127.0.0.1:7000 --noreload
+```
+
+### Local demo mode
+
+For the local SOC demo flow, start Django with:
+
+```powershell
+$env:ASF_LOCAL_SIRP='1'
+$env:ASF_ENABLE_BACKGROUND_SERVICES='1'
+$env:ASF_FAKE_LLM='1'
+$env:ASF_DISABLE_EMBEDDINGS='1'
+python manage.py runserver 127.0.0.1:7000 --noreload
+```
+
+### Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open:
+
+```text
+http://127.0.0.1:5173
+```
+
+## Authentication
+
+Backend auth is token-based.
+
+Main endpoints:
+
+- `POST /api/login/account`
+- `GET /api/currentUser`
+
+The frontend supports:
+
+1. username/password login against `/api/login/account`
+2. manual DRF token paste as fallback
+
+## Local-dev API surface
+
+When `ASF_LOCAL_SIRP=1`, the frontend and local demo flows use:
+
+- `GET /api/health`
+- `GET /api/local-dev/overview`
+- `GET /api/local-dev/alerts`
+- `GET /api/local-dev/assets`
+- `GET /api/local-dev/campaigns`
+- `GET /api/local-dev/cases`
+- `GET /api/local-dev/playbooks`
+- `GET /api/local-dev/messages`
+- `GET /api/local-dev/audit`
+- `GET /api/local-dev/response-jobs`
+- `POST /api/local-dev/respond`
+- `POST /api/local-dev/case-workflow`
+- `POST /api/local-dev/demo-alerts`
+- `POST /api/local-dev/fim-scan`
+- `POST /api/local-dev/vulnerability-scan`
+
+## Local storage
+
+File-backed local SOC state is stored under:
+
+- `ASF_LOCAL_DATA_DIR` if set
+- otherwise `<repo>/.runtime`
+
+That storage includes:
+
+- local SIRP records
+- audit log
+- response jobs
+
+## Health check
+
+Unauthenticated health endpoint:
+
+```text
+GET /api/health
+```
+
+Use it to verify:
+
+- backend reachability
+- demo-mode flags
+- resolved local data directory
+
+## Demo deployment
+
+Railway demo deployment guidance is in:
+
+- [docs/RAILWAY_DEMO.md](docs/RAILWAY_DEMO.md)
+
+The repo includes a committed:
+
+- [Procfile](Procfile)
+
+## Additional docs
+
+- Local frontend UI: [docs/LOCAL_FRONTEND_UI.md](docs/LOCAL_FRONTEND_UI.md)
+- Local SOC flow: [docs/LOCAL_DEV_SOC_FLOW.md](docs/LOCAL_DEV_SOC_FLOW.md)
+- Frontend-specific notes: [frontend/README.md](frontend/README.md)
+
+## Notes
+
+- Production behavior is unchanged unless local-demo environment variables are explicitly enabled.
+- In local-demo mode, response actions are simulated only.
+- Fake-LLM mode is recommended for demos unless you intentionally configure a real OpenAI-compatible model backend.
