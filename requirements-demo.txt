@@ -16,3 +16,4 @@ requests>=2.32.5
 uvicorn>=0.42.0
 dnspython>=2.8.0
 tldextract>=5.1.2
+openpyxl>=3.1.5
