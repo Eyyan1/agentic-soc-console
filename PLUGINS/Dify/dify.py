@@ -3,7 +3,10 @@ from typing import Dict, Any
 import requests
 
 from Lib.log import logger
-from PLUGINS.Dify.CONFIG import DIFY_BASE_URL, DIFY_PROXY, DIFY_API_KEY
+try:
+    from PLUGINS.Dify.CONFIG import DIFY_BASE_URL, DIFY_PROXY, DIFY_API_KEY
+except ModuleNotFoundError:
+    from PLUGINS.Dify.config_runtime import DIFY_BASE_URL, DIFY_PROXY, DIFY_API_KEY
 
 requests.packages.urllib3.disable_warnings()
 

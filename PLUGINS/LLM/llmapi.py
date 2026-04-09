@@ -12,7 +12,10 @@ from langchain_openai import ChatOpenAI
 from Lib.log import logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-from PLUGINS.LLM.CONFIG import LLM_CONFIGS
+try:
+    from PLUGINS.LLM.CONFIG import LLM_CONFIGS
+except ModuleNotFoundError:
+    from PLUGINS.LLM.config_runtime import LLM_CONFIGS
 
 FAKE_LLM_ENABLED = os.getenv("ASF_FAKE_LLM", "0") == "1"
 

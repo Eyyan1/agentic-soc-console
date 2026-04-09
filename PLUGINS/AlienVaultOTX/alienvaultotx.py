@@ -2,7 +2,10 @@ import re
 
 import requests
 
-from PLUGINS.AlienVaultOTX.CONFIG import API_KEY, HTTP_PROXY
+try:
+    from PLUGINS.AlienVaultOTX.CONFIG import API_KEY, HTTP_PROXY
+except ModuleNotFoundError:
+    from PLUGINS.AlienVaultOTX.config_runtime import API_KEY, HTTP_PROXY
 
 
 class AlienVaultOTX(object):

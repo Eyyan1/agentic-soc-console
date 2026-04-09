@@ -7,7 +7,10 @@ from typing import Dict, Any
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from PLUGINS.ELK.CONFIG import ACTION_INDEX_NAME, POLL_INTERVAL_MINUTES
+try:
+    from PLUGINS.ELK.CONFIG import ACTION_INDEX_NAME, POLL_INTERVAL_MINUTES
+except ModuleNotFoundError:
+    from PLUGINS.ELK.config_runtime import ACTION_INDEX_NAME, POLL_INTERVAL_MINUTES
 from PLUGINS.ELK.client import ELKClient
 from PLUGINS.Redis.redis_stream_api import RedisStreamAPI
 

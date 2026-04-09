@@ -14,7 +14,10 @@ from requests.adapters import HTTPAdapter
 from Lib.log import logger
 from Lib.configs import get_local_data_path
 from Lib.xcache import Xcache
-from PLUGINS.SIRP.CONFIG import SIRP_URL, SIRP_APPKEY, SIRP_SIGN
+try:
+    from PLUGINS.SIRP.CONFIG import SIRP_URL, SIRP_APPKEY, SIRP_SIGN
+except ModuleNotFoundError:
+    from PLUGINS.SIRP.config_runtime import SIRP_URL, SIRP_APPKEY, SIRP_SIGN
 from PLUGINS.SIRP.nocolymodel import FieldType, OptionType
 
 # SESSION

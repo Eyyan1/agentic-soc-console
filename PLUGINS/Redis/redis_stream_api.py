@@ -6,7 +6,10 @@ import redis
 
 from Lib.configs import REDIS_CONSUMER_GROUP, REDIS_CONSUMER_NAME
 from Lib.log import logger
-from PLUGINS.Redis.CONFIG import REDIS_STREAM_MAX_LENGTH
+try:
+    from PLUGINS.Redis.CONFIG import REDIS_STREAM_MAX_LENGTH
+except ModuleNotFoundError:
+    from PLUGINS.Redis.config_runtime import REDIS_STREAM_MAX_LENGTH
 from PLUGINS.Redis.redis_client import RedisClient
 
 

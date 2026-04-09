@@ -1,7 +1,10 @@
 import redis
 
 from Lib.log import logger
-from PLUGINS.Redis.CONFIG import REDIS_URL, REDIS_MAX_CONNECTIONS
+try:
+    from PLUGINS.Redis.CONFIG import REDIS_URL, REDIS_MAX_CONNECTIONS
+except ModuleNotFoundError:
+    from PLUGINS.Redis.config_runtime import REDIS_URL, REDIS_MAX_CONNECTIONS
 
 
 class RedisClient(object):

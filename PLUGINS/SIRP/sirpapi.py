@@ -10,7 +10,10 @@ from langchain_core.documents import Document
 from Core.localdev_playbooks import select_local_case_playbook_name
 from Lib.log import logger
 from PLUGINS.Embeddings.embeddings_qdrant import embedding_api_singleton_qdrant, SIRP_KNOWLEDGE_COLLECTION
-from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
+try:
+    from PLUGINS.SIRP.CONFIG import SIRP_NOTICE_WEBHOOK
+except ModuleNotFoundError:
+    from PLUGINS.SIRP.config_runtime import SIRP_NOTICE_WEBHOOK
 from PLUGINS.SIRP.nocolyapi import WorksheetRow
 from PLUGINS.SIRP.nocolymodel import AccountModel, Condition, Group, Operator
 from PLUGINS.SIRP.sirpbase import BaseWorksheetEntity

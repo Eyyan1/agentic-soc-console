@@ -1,6 +1,9 @@
 from elasticsearch import Elasticsearch
 
-from PLUGINS.ELK.CONFIG import ELK_HOST, ELK_USER, ELK_PASS
+try:
+    from PLUGINS.ELK.CONFIG import ELK_HOST, ELK_USER, ELK_PASS
+except ModuleNotFoundError:
+    from PLUGINS.ELK.config_runtime import ELK_HOST, ELK_USER, ELK_PASS
 
 
 class ELKClient:

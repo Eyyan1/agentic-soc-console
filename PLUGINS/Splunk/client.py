@@ -1,6 +1,9 @@
 import splunklib.client
 
-from PLUGINS.Splunk.CONFIG import SPLUNK_HOST, SPLUNK_PORT, SPLUNK_USER, SPLUNK_PASS
+try:
+    from PLUGINS.Splunk.CONFIG import SPLUNK_HOST, SPLUNK_PORT, SPLUNK_USER, SPLUNK_PASS
+except ModuleNotFoundError:
+    from PLUGINS.Splunk.config_runtime import SPLUNK_HOST, SPLUNK_PORT, SPLUNK_USER, SPLUNK_PASS
 
 
 class SplunkClient:

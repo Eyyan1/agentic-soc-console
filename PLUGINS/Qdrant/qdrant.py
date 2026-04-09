@@ -1,6 +1,9 @@
 from qdrant_client import QdrantClient
 
-from PLUGINS.Qdrant.CONFIG import QDRANT_URL, QDRANT_API_KEY
+try:
+    from PLUGINS.Qdrant.CONFIG import QDRANT_URL, QDRANT_API_KEY
+except ModuleNotFoundError:
+    from PLUGINS.Qdrant.config_runtime import QDRANT_URL, QDRANT_API_KEY
 
 
 class Qdrant(object):
