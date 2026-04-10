@@ -1,0 +1,256 @@
+[
+  {
+    "rowid": "asset-fin-ws-01",
+    "agent_id": "agent-fin-ws-01",
+    "hostname": "fin-ws-01",
+    "ip_address": "10.10.20.11",
+    "owner": "finance@company.local",
+    "site": "hq-finance",
+    "criticality": "High",
+    "status": "Attention",
+    "isolation_state": "Isolated",
+    "last_seen": "2026-04-09T07:03:30Z",
+    "operating_system": "Windows 11 Enterprise",
+    "tags": [
+      "finance",
+      "workstation",
+      "sensitive"
+    ],
+    "software_inventory": [
+      {
+        "name": "7-Zip",
+        "version": "22.01"
+      },
+      {
+        "name": "OpenSSL",
+        "version": "1.1.1k"
+      },
+      {
+        "name": "Microsoft Office",
+        "version": "2024.2401"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "cve": "CVE-2026-12001",
+        "severity": "Critical",
+        "cvss": 9.8,
+        "package": "OpenSSL",
+        "installed_version": "1.1.1k",
+        "fixed_in": "3.0.15",
+        "alert_rowid": "e1ccb39d-401c-40c9-bebc-9a32a034b4d0",
+        "detected_at": "2026-04-08T16:45:42Z"
+      },
+      {
+        "cve": "CVE-2026-12001",
+        "severity": "Critical",
+        "cvss": 9.8,
+        "package": "OpenSSL",
+        "installed_version": "1.1.1k",
+        "fixed_in": "3.0.15",
+        "alert_rowid": "59390257-b618-4dd8-9bef-5b7254de0701",
+        "detected_at": "2026-04-08T18:24:41Z"
+      },
+      {
+        "cve": "CVE-2026-12001",
+        "severity": "Critical",
+        "cvss": 9.8,
+        "package": "OpenSSL",
+        "installed_version": "1.1.1k",
+        "fixed_in": "3.0.15",
+        "alert_rowid": "823068db-46ad-4446-a834-01e259258c9c",
+        "detected_at": "2026-04-09T07:02:51Z"
+      }
+    ],
+    "blocked_indicators": [
+      {
+        "value": "indicator-from-alert",
+        "ts": "2026-04-09T03:54:17Z"
+      },
+      {
+        "value": "indicator-from-alert",
+        "ts": "2026-04-09T03:56:40Z"
+      }
+    ],
+    "integrity_findings": [
+      {
+        "path": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\invoice_updater.ps1",
+        "severity": "High",
+        "observed_at": "2026-04-08T16:45:41Z",
+        "alert_rowid": "bde38808-fa4b-4e67-a050-d4f7e0dd53ef"
+      },
+      {
+        "path": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\invoice_updater.ps1",
+        "severity": "High",
+        "observed_at": "2026-04-09T04:17:54Z",
+        "alert_rowid": "331ca194-7ae8-43c6-9c71-1c884d264a5f"
+      },
+      {
+        "path": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\invoice_updater.ps1",
+        "severity": "High",
+        "observed_at": "2026-04-09T07:03:30Z",
+        "alert_rowid": "950cb4c5-ccc8-422e-b25a-0f11513ccafe"
+      }
+    ]
+  },
+  {
+    "rowid": "asset-edge-proxy-01",
+    "agent_id": "agent-edge-proxy-01",
+    "hostname": "edge-proxy-01",
+    "ip_address": "10.10.10.5",
+    "owner": "platform@company.local",
+    "site": "hq-dmz",
+    "criticality": "Critical",
+    "status": "Attention",
+    "isolation_state": "Connected",
+    "last_seen": "2026-04-09T07:03:31Z",
+    "operating_system": "Ubuntu 22.04 LTS",
+    "tags": [
+      "dmz",
+      "proxy",
+      "internet-facing"
+    ],
+    "software_inventory": [
+      {
+        "name": "Nginx",
+        "version": "1.22.0"
+      },
+      {
+        "name": "OpenSSH",
+        "version": "8.9p1"
+      },
+      {
+        "name": "OpenSSL",
+        "version": "3.0.2"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "cve": "CVE-2026-22014",
+        "severity": "High",
+        "cvss": 8.1,
+        "package": "Nginx",
+        "installed_version": "1.22.0",
+        "fixed_in": "1.24.1",
+        "alert_rowid": "17080304-ce35-4d07-bd77-79125635ee8f",
+        "detected_at": "2026-04-08T16:45:42Z"
+      },
+      {
+        "cve": "CVE-2026-22014",
+        "severity": "High",
+        "cvss": 8.1,
+        "package": "Nginx",
+        "installed_version": "1.22.0",
+        "fixed_in": "1.24.1",
+        "alert_rowid": "ba81a343-52a7-46a1-9224-b0f221eda9a5",
+        "detected_at": "2026-04-08T18:24:41Z"
+      },
+      {
+        "cve": "CVE-2026-22014",
+        "severity": "High",
+        "cvss": 8.1,
+        "package": "Nginx",
+        "installed_version": "1.22.0",
+        "fixed_in": "1.24.1",
+        "alert_rowid": "38866be2-d238-488c-9ae9-71c858605892",
+        "detected_at": "2026-04-09T07:02:52Z"
+      }
+    ],
+    "blocked_indicators": [
+      {
+        "value": "indicator-from-alert",
+        "ts": "2026-04-09T03:57:18Z"
+      }
+    ],
+    "integrity_findings": [
+      {
+        "path": "/var/www/html/uploads/invoice-review.php",
+        "severity": "Critical",
+        "observed_at": "2026-04-08T16:45:41Z",
+        "alert_rowid": "f4e9c50d-cb72-483b-b157-e8dc36d0ad49"
+      },
+      {
+        "path": "/var/www/html/uploads/invoice-review.php",
+        "severity": "Critical",
+        "observed_at": "2026-04-09T04:17:54Z",
+        "alert_rowid": "5bc1ff04-69d2-43f8-a6f7-167885dacf20"
+      },
+      {
+        "path": "/var/www/html/uploads/invoice-review.php",
+        "severity": "Critical",
+        "observed_at": "2026-04-09T07:03:31Z",
+        "alert_rowid": "eadca414-4d7c-488e-ad63-b2b6ba877fb0"
+      }
+    ]
+  },
+  {
+    "rowid": "asset-db-core-01",
+    "agent_id": "agent-db-core-01",
+    "hostname": "db-core-01",
+    "ip_address": "10.10.30.20",
+    "owner": "dba@company.local",
+    "site": "hq-datacenter",
+    "criticality": "Critical",
+    "status": "Attention",
+    "isolation_state": "Isolated",
+    "last_seen": "2026-04-09T07:02:52Z",
+    "operating_system": "Ubuntu 20.04 LTS",
+    "tags": [
+      "database",
+      "crown-jewel"
+    ],
+    "software_inventory": [
+      {
+        "name": "PostgreSQL",
+        "version": "13.8"
+      },
+      {
+        "name": "glibc",
+        "version": "2.31"
+      },
+      {
+        "name": "OpenSSL",
+        "version": "1.1.1f"
+      }
+    ],
+    "vulnerabilities": [
+      {
+        "cve": "CVE-2026-33177",
+        "severity": "High",
+        "cvss": 8.4,
+        "package": "glibc",
+        "installed_version": "2.31",
+        "fixed_in": "2.39",
+        "alert_rowid": "427e4024-e186-4f9e-a8ab-7ad640296677",
+        "detected_at": "2026-04-08T16:45:42Z"
+      },
+      {
+        "cve": "CVE-2026-33177",
+        "severity": "High",
+        "cvss": 8.4,
+        "package": "glibc",
+        "installed_version": "2.31",
+        "fixed_in": "2.39",
+        "alert_rowid": "dded25f7-252a-4f53-a879-2829e74cee76",
+        "detected_at": "2026-04-08T18:24:41Z"
+      },
+      {
+        "cve": "CVE-2026-33177",
+        "severity": "High",
+        "cvss": 8.4,
+        "package": "glibc",
+        "installed_version": "2.31",
+        "fixed_in": "2.39",
+        "alert_rowid": "e249c196-392b-4f9b-bc91-286fd31af1e1",
+        "detected_at": "2026-04-09T07:02:52Z"
+      }
+    ],
+    "blocked_indicators": [
+      {
+        "value": "indicator-from-alert",
+        "ts": "2026-04-09T03:58:08Z"
+      }
+    ],
+    "integrity_findings": []
+  }
+]
