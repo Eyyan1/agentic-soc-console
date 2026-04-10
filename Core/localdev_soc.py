@@ -123,11 +123,11 @@ def _save_assets(assets: list[dict]) -> None:
 def list_assets() -> list[dict]:
     _ensure_runtime_dir()
     if not LOCAL_ASSET_INVENTORY_PATH.exists():
-        _save_assets(deepcopy(DEFAULT_ASSETS))
+        _save_assets([])
     try:
         assets = json.loads(LOCAL_ASSET_INVENTORY_PATH.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        assets = deepcopy(DEFAULT_ASSETS)
+        assets = []
         _save_assets(assets)
     return assets
 

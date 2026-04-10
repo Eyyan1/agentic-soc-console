@@ -43,6 +43,14 @@ PHISHING_MOCK_SCRIPT = ROOT_DIR / "DATA" / "ES-Rule-21-Phishing-User-Report-Mail
 PHISHING_MODULE_FILE = ROOT_DIR / "MODULES" / "ES-Rule-21-Phishing-User-Report-Mail.py"
 LOCAL_AUDIT_LOG_PATH = Path(get_local_data_path("local_soc_audit_log.json"))
 LOCAL_RESPONSE_JOB_LOG_PATH = Path(get_local_data_path("local_soc_response_jobs.json"))
+LOCAL_DEV_PLACEHOLDER_FILES = {
+    "alerts.json": "[]",
+    "cases.json": "[]",
+    "messages.json": "[]",
+    "playbooks.json": "[]",
+    "audit.json": "[]",
+    "assets.json": "[]",
+}
 
 
 def _require_local_dev_api():
@@ -125,6 +133,10 @@ def _ensure_runtime_dir():
         LOCAL_AUDIT_LOG_PATH.write_text("[]", encoding="utf-8")
     if not LOCAL_RESPONSE_JOB_LOG_PATH.exists():
         LOCAL_RESPONSE_JOB_LOG_PATH.write_text("[]", encoding="utf-8")
+    for filename, default_content in LOCAL_DEV_PLACEHOLDER_FILES.items():
+        placeholder_path = Path(get_local_data_path(filename))
+        if not placeholder_path.exists():
+            placeholder_path.write_text(default_content, encoding="utf-8")
 
 
 def _bootstrap_local_dev_state():
