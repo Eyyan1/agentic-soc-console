@@ -193,3 +193,13 @@ PLUGINS/Embeddings/db/*
 node_modules/
 frontend/node_modules/
 frontend/dist/
+
+# Local runtime state
+.runtime/
+
+# Local service data
+Docker/DB/db.sqlite3
+Docker/RedisStack/redis-data/*
+!Docker/RedisStack/redis-data/.gitkeep
+Docker/Qdrant/qdrant_storage/*
+!Docker/Qdrant/qdrant_storage/.gitkeep
