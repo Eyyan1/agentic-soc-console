@@ -2,14 +2,41 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, 'DATA')
-LOCAL_DATA_DIR = os.getenv("ASF_LOCAL_DATA_DIR") or os.path.join(BASE_DIR, ".runtime")
+DEFAULT_LOCAL_DATA_DIR = os.path.join(BASE_DIR, ".runtime")
+CONFIGURED_LOCAL_DATA_DIR = os.getenv("ASF_LOCAL_DATA_DIR")
+LOCAL_DATA_DIR = CONFIGURED_LOCAL_DATA_DIR or DEFAULT_LOCAL_DATA_DIR
 REDIS_CONSUMER_GROUP = 'AI_SOC_FRAMEWORK_GROUP'
 REDIS_CONSUMER_NAME = 'AI_SOC_FRAMEWORK_CONSUMER_0'
+_RESOLVED_LOCAL_DATA_DIR = None
+
+
+def _is_path_writable(path: str) -> bool:
+    try:
+        os.makedirs(path, exist_ok=True)
+        probe_path = os.path.join(path, ".write_probe")
+        with open(probe_path, "w", encoding="utf-8") as probe_file:
+            probe_file.write("ok")
+        os.remove(probe_path)
+        return True
+    except OSError:
+        return False
+
+
+def _resolve_local_data_dir() -> str:
+    for candidate in [CONFIGURED_LOCAL_DATA_DIR, DEFAULT_LOCAL_DATA_DIR]:
+        if not candidate:
+            continue
+        if _is_path_writable(candidate):
+            return candidate
+    return DEFAULT_LOCAL_DATA_DIR
 
 
 def get_local_data_dir() -> str:
-    os.makedirs(LOCAL_DATA_DIR, exist_ok=True)
-    return LOCAL_DATA_DIR
+    global _RESOLVED_LOCAL_DATA_DIR
+    if _RESOLVED_LOCAL_DATA_DIR is None:
+        _RESOLVED_LOCAL_DATA_DIR = _resolve_local_data_dir()
+    os.makedirs(_RESOLVED_LOCAL_DATA_DIR, exist_ok=True)
+    return _RESOLVED_LOCAL_DATA_DIR
 
 
 def get_local_data_path(*parts: str) -> str:

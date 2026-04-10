@@ -55,14 +55,25 @@ ASF_FAKE_LLM=1
 ASF_DISABLE_EMBEDDINGS=1
 ASF_ENABLE_BACKGROUND_SERVICES=0
 ASF_PROCESS_ROLE=web
-ASF_LOCAL_DATA_DIR=/var/data
 ASF_ALLOWED_FRONTEND_ORIGINS=https://agentic-soc-console-ennzhr8lg-eyyan1s-projects.vercel.app
 ```
 
-If you attach a persistent disk, mount it at:
+`ASF_LOCAL_DATA_DIR` is optional. If it is unset, or if it points to an unwritable path such as `/data` without a mounted disk, the demo backend now falls back automatically to:
+
+```text
+<repo>/.runtime
+```
+
+If you do attach a persistent disk, you can still mount it at:
 
 ```text
 /var/data
+```
+
+and set:
+
+```text
+ASF_LOCAL_DATA_DIR=/var/data
 ```
 
 `ASF_ALLOWED_FRONTEND_ORIGINS` is a comma-separated allowlist for browser frontend origins. The backend always allows these local dev origins by default:
