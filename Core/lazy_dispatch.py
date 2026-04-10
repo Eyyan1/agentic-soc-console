@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from django.views.decorators.csrf import csrf_exempt
 from django.utils.module_loading import import_string
 
 
@@ -12,8 +13,10 @@ def _get_view_callable(module_path: str, class_name: str, actions_key: tuple[tup
 def lazy_viewset(module_path: str, class_name: str, actions: dict[str, str]):
     actions_key = tuple(sorted(actions.items()))
 
+    @csrf_exempt
     def _view(request, *args, **kwargs):
         view = _get_view_callable(module_path, class_name, actions_key)
         return view(request, *args, **kwargs)
 
+    _view.csrf_exempt = True
     return _view
