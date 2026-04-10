@@ -189,6 +189,9 @@ DATA/Debug_*/
 PLUGINS/Embeddings/db/*
 
 .claude/*
+.claude-plugin/
+.gemini/
+CLAUDE.md
 .vscode/*
 node_modules/
 frontend/node_modules/
