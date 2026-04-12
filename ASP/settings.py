@@ -189,12 +189,20 @@ _configured_frontend_origins = [
 CORS_ALLOWED_ORIGINS = list(dict.fromkeys(DEFAULT_FRONTEND_ORIGINS + _configured_frontend_origins))
 CORS_URLS_REGEX = r"^/api/.*$"
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"{REDIS_URL}1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+if os.getenv("ASF_LOCAL_SIRP", "0") == "1" or os.getenv("ASF_DISABLE_REDIS_CACHE", "0") == "1":
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "agentic-soc-demo-cache",
         }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": f"{REDIS_URL}1",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            }
+        }
+    }
