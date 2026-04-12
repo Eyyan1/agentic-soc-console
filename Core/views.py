@@ -1,6 +1,7 @@
 import datetime
 import os
 
+from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.generics import DestroyAPIView, UpdateAPIView
@@ -18,6 +19,42 @@ def _data_return(code=500, data=None, msg_zh="服务器发生错误,请检查服
     return {"code": code, "data": data, "msg_zh": msg_zh, "msg_en": msg_en}
 
 
+def _ensure_local_demo_admin(username: str | None, password: str | None) -> None:
+    if os.getenv("ASF_LOCAL_SIRP", "0") != "1":
+        return
+
+    demo_username = os.getenv("ASF_DEMO_ADMIN_USERNAME", "admin")
+    demo_password = os.getenv("ASF_DEMO_ADMIN_PASSWORD", "admin12345")
+    sync_password = os.getenv("ASF_SYNC_DEMO_ADMIN_PASSWORD", "1") == "1"
+
+    if username != demo_username or password != demo_password:
+        return
+
+    user, created = User.objects.get_or_create(
+        username=demo_username,
+        defaults={
+            "is_staff": True,
+            "is_superuser": True,
+            "is_active": True,
+        },
+    )
+    changed = False
+    if created or (sync_password and not user.check_password(demo_password)):
+        user.set_password(demo_password)
+        changed = True
+    if not user.is_active:
+        user.is_active = True
+        changed = True
+    if not user.is_staff:
+        user.is_staff = True
+        changed = True
+    if not user.is_superuser:
+        user.is_superuser = True
+        changed = True
+    if changed:
+        user.save()
+
+
 class BaseAuthView(ModelViewSet, UpdateAPIView, DestroyAPIView):
     queryset = []
     serializer_class = AuthTokenSerializer
@@ -31,6 +68,7 @@ class BaseAuthView(ModelViewSet, UpdateAPIView, DestroyAPIView):
         password = request.data.get("password")
 
         try:
+            _ensure_local_demo_admin(username, password)
             serializer = AuthTokenSerializer(data={"username": username, "password": password})
             if serializer.is_valid():
                 token, created = Token.objects.get_or_create(user=serializer.validated_data["user"])
