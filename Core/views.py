@@ -15,7 +15,7 @@ from Lib.configs import BASEAUTH_MSG_EN, BASEAUTH_MSG_ZH, EXPIRE_MINUTES, get_lo
 from Lib.log import logger
 
 
-DEMO_AUTH_BUILD_ID = "demo-auth-2026-04-13"
+DEMO_AUTH_BUILD_ID = "demo-auth-static-token-2026-04-13"
 DEFAULT_DEMO_USERNAME = "admin"
 DEFAULT_DEMO_PASSWORD = "admin12345"
 DEFAULT_DEMO_TOKEN = "asf-local-demo-token"
