@@ -1,4 +1,6 @@
 import datetime
+import os
+from types import SimpleNamespace
 
 from rest_framework import exceptions
 from rest_framework.authentication import TokenAuthentication
@@ -8,8 +10,21 @@ from Lib.xcache import Xcache
 from Lib.log import logger
 
 
+DEFAULT_DEMO_TOKEN = "asf-local-demo-token"
+
+
 class BaseAuth(TokenAuthentication):
     def authenticate_credentials(self, key=None):
+        if os.getenv("ASF_LOCAL_SIRP", "0") == "1" and key == os.getenv("ASF_DEMO_AUTH_TOKEN", DEFAULT_DEMO_TOKEN):
+            return SimpleNamespace(
+                id="local-demo-admin",
+                username=os.getenv("ASF_DEMO_ADMIN_USERNAME", "admin"),
+                is_active=True,
+                is_authenticated=True,
+                is_staff=True,
+                is_superuser=True,
+            ), key
+
         # search cached user token
         try:
             cache_user = Xcache.alive_token(key)

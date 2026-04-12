@@ -18,6 +18,7 @@ from Lib.log import logger
 DEMO_AUTH_BUILD_ID = "demo-auth-2026-04-13"
 DEFAULT_DEMO_USERNAME = "admin"
 DEFAULT_DEMO_PASSWORD = "admin12345"
+DEFAULT_DEMO_TOKEN = "asf-local-demo-token"
 
 
 def _data_return(code=500, data=None, msg_zh="服务器发生错误,请检查服务器", msg_en="An error occurred on the server, please check the server."):
@@ -94,6 +95,16 @@ def _build_login_success(user: User, authority: str = "admin") -> dict:
     }
 
 
+def _build_local_demo_login_success(username: str | None, authority: str = "admin") -> dict:
+    return {
+        "status": "ok",
+        "type": "account",
+        "currentAuthority": authority,
+        "username": username or DEFAULT_DEMO_USERNAME,
+        "token": os.getenv("ASF_DEMO_AUTH_TOKEN", DEFAULT_DEMO_TOKEN),
+    }
+
+
 class BaseAuthView(ModelViewSet, UpdateAPIView, DestroyAPIView):
     queryset = []
     serializer_class = AuthTokenSerializer
@@ -109,9 +120,8 @@ class BaseAuthView(ModelViewSet, UpdateAPIView, DestroyAPIView):
 
         if local_demo_enabled:
             try:
-                demo_user = _ensure_local_demo_admin(username, password)
-                if demo_user is not None:
-                    context = _data_return(201, _build_login_success(demo_user), BASEAUTH_MSG_ZH.get(201), BASEAUTH_MSG_EN.get(201))
+                if _local_demo_credentials_match(username, password):
+                    context = _data_return(201, _build_local_demo_login_success(username), BASEAUTH_MSG_ZH.get(201), BASEAUTH_MSG_EN.get(201))
                     return Response(context)
             except Exception as exc:
                 logger.exception(exc)
@@ -181,6 +191,7 @@ class HealthView(BaseView):
                 "default_admin_enabled": os.getenv("ASF_DISABLE_DEFAULT_DEMO_ADMIN", "0") != "1",
                 "configured_username": os.getenv("ASF_DEMO_ADMIN_USERNAME", DEFAULT_DEMO_USERNAME),
                 "password_configured": bool(os.getenv("ASF_DEMO_ADMIN_PASSWORD")),
+                "static_token_enabled": True,
                 "sync_password": os.getenv("ASF_SYNC_DEMO_ADMIN_PASSWORD", "1") == "1",
             },
             "response_actions": {
