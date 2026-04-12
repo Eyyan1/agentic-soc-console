@@ -19,16 +19,16 @@ def _data_return(code=500, data=None, msg_zh="服务器发生错误,请检查服
     return {"code": code, "data": data, "msg_zh": msg_zh, "msg_en": msg_en}
 
 
-def _ensure_local_demo_admin(username: str | None, password: str | None) -> None:
+def _ensure_local_demo_admin(username: str | None, password: str | None) -> User | None:
     if os.getenv("ASF_LOCAL_SIRP", "0") != "1":
-        return
+        return None
 
     demo_username = os.getenv("ASF_DEMO_ADMIN_USERNAME", "admin")
     demo_password = os.getenv("ASF_DEMO_ADMIN_PASSWORD", "admin12345")
     sync_password = os.getenv("ASF_SYNC_DEMO_ADMIN_PASSWORD", "1") == "1"
 
     if username != demo_username or password != demo_password:
-        return
+        return None
 
     user, created = User.objects.get_or_create(
         username=demo_username,
@@ -53,6 +53,23 @@ def _ensure_local_demo_admin(username: str | None, password: str | None) -> None
         changed = True
     if changed:
         user.save()
+    return user
+
+
+def _build_login_success(user: User, authority: str = "admin") -> dict:
+    token, created = Token.objects.get_or_create(user=user)
+    time_now = datetime.datetime.now()
+    if created or token.created < time_now - datetime.timedelta(minutes=EXPIRE_MINUTES):
+        token.delete()
+        token = Token.objects.create(user=user)
+        token.created = time_now
+        token.save()
+    return {
+        "status": "ok",
+        "type": "account",
+        "currentAuthority": authority,
+        "token": token.key,
+    }
 
 
 class BaseAuthView(ModelViewSet, UpdateAPIView, DestroyAPIView):
@@ -68,20 +85,19 @@ class BaseAuthView(ModelViewSet, UpdateAPIView, DestroyAPIView):
         password = request.data.get("password")
 
         try:
-            _ensure_local_demo_admin(username, password)
+            demo_user = _ensure_local_demo_admin(username, password)
+            if demo_user is not None:
+                context = _data_return(201, _build_login_success(demo_user), BASEAUTH_MSG_ZH.get(201), BASEAUTH_MSG_EN.get(201))
+                return Response(context)
+
             serializer = AuthTokenSerializer(data={"username": username, "password": password})
             if serializer.is_valid():
-                token, created = Token.objects.get_or_create(user=serializer.validated_data["user"])
-                time_now = datetime.datetime.now()
-                if created or token.created < time_now - datetime.timedelta(minutes=EXPIRE_MINUTES):
-                    token.delete()
-                    token = Token.objects.create(user=serializer.validated_data["user"])
-                    token.created = time_now
-                    token.save()
-                null_response["status"] = "ok"
-                null_response["currentAuthority"] = "admin"
-                null_response["token"] = token.key
-                context = _data_return(201, null_response, BASEAUTH_MSG_ZH.get(201), BASEAUTH_MSG_EN.get(201))
+                context = _data_return(
+                    201,
+                    _build_login_success(serializer.validated_data["user"]),
+                    BASEAUTH_MSG_ZH.get(201),
+                    BASEAUTH_MSG_EN.get(201),
+                )
                 return Response(context)
             context = _data_return(301, null_response, BASEAUTH_MSG_ZH.get(301), BASEAUTH_MSG_EN.get(301))
             return Response(context)
