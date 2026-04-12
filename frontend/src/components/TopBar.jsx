@@ -164,11 +164,6 @@ export function TopBar({
             {" "}to{" "}After {demoResult.counts_after?.alerts ?? 0}/{demoResult.counts_after?.cases ?? 0}/{demoResult.counts_after?.playbooks ?? 0}/{demoResult.counts_after?.messages ?? 0}
             {" "}for alerts/cases/playbooks/messages.
           </div>
-          {(demoResult.counts_before?.alerts ?? 0) === 0 && (demoResult.counts_after?.alerts ?? 0) === 0 ? (
-            <div className="mt-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
-              This response came from an older backend process that does not have the new local fallback loaded. Restart Django on port 7000, then try again.
-            </div>
-          ) : null}
         </div>
       ) : null}
     </div>
