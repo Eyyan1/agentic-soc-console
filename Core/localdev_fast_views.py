@@ -374,6 +374,51 @@ def _action_detail(action: str, target_rowid: str) -> dict:
     })
 
 
+def _workflow_message(payload: dict, case_rowid: str) -> str:
+    if payload.get("owner"):
+        return f"Assigned case {case_rowid} to {payload['owner']} and updated ownership in the case record."
+    if payload.get("note"):
+        return f"Added analyst note to case {case_rowid}: {payload['note']}"
+    if payload.get("disposition"):
+        return f"Closed case {case_rowid} with disposition {payload['disposition']}."
+    if payload.get("status"):
+        return f"Changed case {case_rowid} status to {payload['status']}."
+    return f"Updated case workflow for {case_rowid}."
+
+
+def _append_case_activity(case_rowid: str, content: str, action: str = "case_workflow") -> dict:
+    now = _now()
+    audit = {
+        "rowid": f"audit-{int(time.time() * 1000)}",
+        "role": "HumanMessage",
+        "action": action,
+        "content": content,
+        "target_rowid": case_rowid,
+        "status": "completed",
+        "ts": now,
+        "details": {
+            "summary": content,
+            "operator": "Local Demo Analyst",
+            "mode": "case_workflow",
+        },
+    }
+    message = {
+        "rowid": f"msg-{int(time.time() * 1000)}-{len(_read_items('messages'))}",
+        "role": "HumanMessage",
+        "node": "case-workflow",
+        "content": content,
+        "target_rowid": case_rowid,
+        "ts": now,
+    }
+    audits = _read_items("audit")
+    messages = _read_items("messages")
+    audits.insert(0, audit)
+    messages.insert(0, message)
+    _write_items("audit", audits[:500])
+    _write_items("messages", messages[:500])
+    return audit
+
+
 def _case_lookup() -> dict:
     return {item.get("rowid"): item for item in _read_items("cases")}
 
@@ -482,6 +527,7 @@ def _normalize_case(item: dict, include_detail: bool = False) -> dict:
             "remaining_minutes": 60,
             "breached": False,
         }
+        payload["notes"] = payload.get("notes") if isinstance(payload.get("notes"), list) else []
     return payload
 
 
@@ -633,8 +679,57 @@ class LocalDevResponseActionsView(BaseView):
         return Response(data_return(200, job, "Success", "Success"))
 
 
-class LocalDevCaseWorkflowView(LocalDevResponseActionsView):
-    pass
+class LocalDevCaseWorkflowView(BaseView):
+    def create(self, request, pk=None, **kwargs):
+        _require_local_dev_api()
+        case_rowid = request.data.get("case_rowid") or request.data.get("target_rowid")
+        if not case_rowid:
+            raise NotFound("Case rowid is required.")
+
+        cases = _read_items("cases")
+        selected_case = None
+        for case in cases:
+            if case.get("rowid") == case_rowid:
+                selected_case = case
+                break
+        if selected_case is None:
+            raise NotFound("Case not found.")
+
+        now = _now()
+        notes = selected_case.get("notes") if isinstance(selected_case.get("notes"), list) else []
+
+        owner = request.data.get("owner")
+        status = request.data.get("status")
+        note = request.data.get("note")
+        disposition = request.data.get("disposition")
+
+        if owner is not None and str(owner).strip():
+            selected_case["owner"] = str(owner).strip()
+        if status is not None and str(status).strip():
+            selected_case["status"] = str(status).strip()
+        if note is not None and str(note).strip():
+            notes.insert(0, {
+                "rowid": f"note-{int(time.time() * 1000)}",
+                "author": "Local Demo Analyst",
+                "content": str(note).strip(),
+                "ts": now,
+            })
+            selected_case["notes"] = notes[:100]
+        if disposition is not None and str(disposition).strip():
+            selected_case["disposition"] = str(disposition).strip()
+            selected_case["status"] = "Closed"
+            selected_case["closed_at"] = now
+
+        selected_case["last_updated"] = now
+        message = _workflow_message(request.data, case_rowid)
+        audit = _append_case_activity(case_rowid, message)
+        _write_items("cases", cases)
+
+        payload = {
+            "case": _normalize_case(selected_case, include_detail=True),
+            "audit_entry": audit,
+        }
+        return Response(data_return(200, payload, "Success", "Success"))
 
 
 class LocalDevDemoAlertsView(BaseView):
