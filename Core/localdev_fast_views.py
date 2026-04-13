@@ -419,6 +419,36 @@ def _append_case_activity(case_rowid: str, content: str, action: str = "case_wor
     return audit
 
 
+def _sync_linked_alert_status(case_record: dict, status: str | None = None, disposition: str | None = None):
+    linked_alerts = set(case_record.get("linked_alerts") or [])
+    if not linked_alerts:
+        return
+
+    case_status = str(status or case_record.get("status") or "").lower()
+    case_disposition = str(disposition or case_record.get("disposition") or "").lower()
+    if case_status not in {"resolved", "closed"} and not case_disposition:
+        return
+
+    alert_status = "Resolved"
+    if "false" in case_disposition:
+        alert_status = "False Positive"
+    elif "benign" in case_disposition:
+        alert_status = "Benign Positive"
+
+    now = _now()
+    alerts = _read_items("alerts")
+    changed = False
+    for alert in alerts:
+        if alert.get("rowid") in linked_alerts:
+            alert["status"] = alert_status
+            alert["resolution"] = case_record.get("disposition") or "Resolved"
+            alert["resolved_at"] = now
+            alert["linked_case"] = case_record.get("rowid")
+            changed = True
+    if changed:
+        _write_items("alerts", alerts)
+
+
 def _case_lookup() -> dict:
     return {item.get("rowid"): item for item in _read_items("cases")}
 
@@ -721,6 +751,7 @@ class LocalDevCaseWorkflowView(BaseView):
             selected_case["closed_at"] = now
 
         selected_case["last_updated"] = now
+        _sync_linked_alert_status(selected_case, status=status, disposition=disposition)
         message = _workflow_message(request.data, case_rowid)
         audit = _append_case_activity(case_rowid, message)
         _write_items("cases", cases)
