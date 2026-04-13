@@ -99,10 +99,11 @@ def _append_activity(role: str, content: str, target_rowid: str):
         "rowid": f"audit-{int(time.time() * 1000)}-{len(_read_items('audit'))}",
         "role": role,
         "action": content,
+        "content": content,
         "target_rowid": target_rowid,
         "status": "completed",
         "ts": record["ts"],
-        "details": {"mode": "simulated_only"},
+        "details": {"summary": content, "mode": "simulated_response"},
     }])
 
 
@@ -142,7 +143,7 @@ def _seed_related_records(alerts: list[dict], case_id: str, title: str):
     _append_unique("playbooks", [playbook])
     for alert in alerts:
         alert["linked_case"] = case_id
-    _append_activity("agent", f"[AI] Created triage case {case_id} and completed local playbook.", case_id)
+    _append_activity("AIMessage", f"Classified related alerts, created case {case_id}, enriched artifacts, and completed the local triage playbook.", case_id)
 
 
 def _fim_alerts() -> list[dict]:
@@ -328,6 +329,51 @@ def _mitre_items(values) -> list[dict]:
     return items
 
 
+def _action_detail(action: str, target_rowid: str) -> dict:
+    details = {
+        "create_ticket": {
+            "label": "Created remediation ticket",
+            "summary": f"Created remediation ticket for {target_rowid}; owner set to Local SOC Analyst and evidence review queued.",
+        },
+        "block_domain_ip": {
+            "label": "Blocked suspicious indicator",
+            "summary": f"Added suspicious domain/IP/hash from {target_rowid} to the simulated block list and recorded containment evidence.",
+        },
+        "isolate_host": {
+            "label": "Isolated host",
+            "summary": f"Placed affected host for {target_rowid} into simulated network isolation pending analyst review.",
+        },
+        "disable_user": {
+            "label": "Disabled user",
+            "summary": f"Disabled affected user for {target_rowid} in simulated identity response mode.",
+        },
+        "run_playbook": {
+            "label": "Ran triage playbook",
+            "summary": f"Executed local triage playbook for {target_rowid}; enrichment, containment checks, and recommended next steps completed.",
+        },
+        "assign": {
+            "label": "Assigned investigation",
+            "summary": f"Assigned {target_rowid} to Local SOC Analyst for investigation and closure tracking.",
+        },
+        "resolve_true_positive": {
+            "label": "Resolved as true positive",
+            "summary": f"Resolved {target_rowid} as true positive after response actions and evidence were recorded.",
+        },
+        "false_positive": {
+            "label": "Closed as false positive",
+            "summary": f"Closed {target_rowid} as false positive with audit trail retained.",
+        },
+        "mark_false_positive": {
+            "label": "Marked false positive",
+            "summary": f"Marked {target_rowid} as false positive and removed it from active triage.",
+        },
+    }
+    return details.get(action, {
+        "label": action.replace("_", " ").title(),
+        "summary": f"Recorded analyst action '{action}' for {target_rowid}.",
+    })
+
+
 def _case_lookup() -> dict:
     return {item.get("rowid"): item for item in _read_items("cases")}
 
@@ -336,7 +382,8 @@ def _normalize_alert(item: dict, include_detail: bool = False) -> dict:
     payload = dict(item)
     enrichment = payload.get("enrichment") if isinstance(payload.get("enrichment"), dict) else {}
     artifact_items = _artifact_list(payload.get("artifacts"))
-    case = _case_lookup().get(payload.get("linked_case"))
+    linked_case_id = payload.get("linked_case")
+    case = _case_lookup().get(linked_case_id)
     payload["source"] = payload.get("source") or payload.get("product_name") or "local-demo"
     payload["product_name"] = payload.get("product_name") or payload["source"]
     payload["product_category"] = payload.get("product_category") or payload["source"]
@@ -378,7 +425,7 @@ def _normalize_alert(item: dict, include_detail: bool = False) -> dict:
     }
     payload["response_jobs"] = [
         job for job in _read_items("response_jobs")
-        if job.get("target_rowid") in {payload.get("rowid"), payload.get("linked_case")}
+        if job.get("target_rowid") in {payload.get("rowid"), linked_case_id}
     ] if include_detail else payload.get("response_jobs", [])
     payload["raw_event"] = payload.get("raw_event") or {"source": payload["source"], "title": payload.get("title"), "target": payload.get("target")}
     return payload
@@ -546,24 +593,38 @@ class LocalDevResponseActionsView(BaseView):
         audits = _read_items("audit")
         action = request.data.get("action") or "demo_action"
         target_rowid = request.data.get("target_rowid") or request.data.get("alert_id") or request.data.get("case_id") or "local-demo"
-        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        now = _now()
+        action_detail = _action_detail(action, target_rowid)
         job = {
             "rowid": f"job-{int(time.time() * 1000)}",
             "action": action,
+            "action_label": action_detail["label"],
             "target_rowid": target_rowid,
             "status": "completed",
             "started_at": now,
             "finished_at": now,
-            "summary": f"Simulated local-dev action completed: {action}",
+            "summary": action_detail["summary"],
+            "outputs": [
+                "Request accepted by local response controller.",
+                "Authorization token validated for demo analyst session.",
+                "Response was executed in simulated mode; no external system was changed.",
+                "Audit record and response job were written to the local activity store.",
+            ],
         }
         audit = {
             "rowid": f"audit-{int(time.time() * 1000)}",
-            "role": "human",
+            "role": "HumanMessage",
             "action": action,
+            "content": action_detail["summary"],
             "target_rowid": target_rowid,
             "status": "completed",
             "ts": now,
-            "details": {"mode": "simulated_only"},
+            "details": {
+                "summary": action_detail["summary"],
+                "action_label": action_detail["label"],
+                "mode": "simulated_response",
+                "operator": "Local Demo Analyst",
+            },
         }
         jobs.insert(0, job)
         audits.insert(0, audit)

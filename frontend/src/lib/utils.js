@@ -44,10 +44,14 @@ export function summarizeActivity(item) {
     HumanMessage: "HUMAN",
     ToolMessage: "PLAYBOOK",
     AuditLog: "SYSTEM",
-    ResponseJob: "RESPONSE"
+    ResponseJob: "RESPONSE",
+    human: "HUMAN",
+    agent: "AI",
+    system: "SYSTEM",
+    playbook: "PLAYBOOK"
   };
   const prefix = prefixMap[role] || String(role).replace(/Message$/, "").toUpperCase();
-  const body = item.content || item.details?.summary || item.action || item.node || "Updated record";
+  const body = item.content || item.details?.summary || item.summary || item.action_label || item.action || item.node || "Updated record";
   return `[${prefix}] ${body}`;
 }
 
