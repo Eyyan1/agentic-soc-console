@@ -257,9 +257,190 @@ def _find_item(items: list, pk: str):
     raise NotFound("Record not found.")
 
 
+def _artifact_list(artifacts) -> list[dict]:
+    if isinstance(artifacts, list):
+        return artifacts
+    if not isinstance(artifacts, dict):
+        return []
+    items = []
+    labels = {
+        "ips": "IP Address",
+        "domains": "Domain",
+        "emails": "Email",
+        "hashes": "Hash",
+    }
+    for key, values in artifacts.items():
+        if not isinstance(values, list):
+            values = [values]
+        for index, value in enumerate(values):
+            if value:
+                items.append({
+                    "rowid": f"artifact-{key}-{index}-{value}",
+                    "type": labels.get(key, key),
+                    "role": labels.get(key, key),
+                    "value": value,
+                })
+    return items
+
+
+def _action_buttons(actions) -> list[dict]:
+    definitions = {
+        "isolate host": ("isolate_host", "Isolate Host", "Simulate host network isolation for containment."),
+        "disable user": ("disable_user", "Disable User", "Simulate disabling the affected identity."),
+        "block domain/IP": ("block_domain_ip", "Block Domain/IP", "Simulate blocking the malicious domain or IP."),
+        "block IP/domain/hash": ("block_domain_ip", "Block Indicator", "Simulate blocking the selected indicator."),
+        "create ticket": ("create_ticket", "Create Ticket", "Create a simulated remediation ticket."),
+        "run playbook": ("run_playbook", "Run Playbook", "Queue the local triage playbook."),
+        "review file hash": ("create_ticket", "Review File Hash", "Create a follow-up task to review the file hash."),
+        "review change ticket": ("create_ticket", "Review Change Ticket", "Create a task to verify the change request."),
+        "verify admin activity": ("assign", "Assign Verification", "Assign verification to a local SOC analyst."),
+        "create remediation ticket": ("create_ticket", "Create Remediation Ticket", "Open a remediation task for patching."),
+        "apply patch": ("create_ticket", "Track Patch", "Create a patch tracking task."),
+        "restrict exposure": ("block_domain_ip", "Restrict Exposure", "Apply a simulated compensating control."),
+    }
+    normalized = []
+    for item in actions or []:
+        if isinstance(item, dict):
+            normalized.append(item)
+            continue
+        action_id, label, description = definitions.get(str(item), ("create_ticket", str(item).title(), "Record this analyst action in the local audit log."))
+        normalized.append({"id": action_id, "label": label, "description": description})
+    if not normalized:
+        normalized = [
+            {"id": "create_ticket", "label": "Create Ticket", "description": "Create a simulated remediation ticket."},
+            {"id": "run_playbook", "label": "Run Playbook", "description": "Queue the local triage playbook."},
+            {"id": "assign", "label": "Assign", "description": "Assign to a local SOC analyst."},
+        ]
+    return normalized
+
+
+def _mitre_items(values) -> list[dict]:
+    mapping = {
+        "T1566.002": "Phishing: Spearphishing Link",
+        "T1505.003": "Server Software Component: Web Shell",
+        "T1098": "Account Manipulation",
+        "T1190": "Exploit Public-Facing Application",
+    }
+    items = []
+    for value in values or []:
+        technique = mapping.get(value, "Mapped Technique")
+        items.append({"id": value, "technique": technique})
+    return items
+
+
+def _case_lookup() -> dict:
+    return {item.get("rowid"): item for item in _read_items("cases")}
+
+
+def _normalize_alert(item: dict, include_detail: bool = False) -> dict:
+    payload = dict(item)
+    enrichment = payload.get("enrichment") if isinstance(payload.get("enrichment"), dict) else {}
+    artifact_items = _artifact_list(payload.get("artifacts"))
+    case = _case_lookup().get(payload.get("linked_case"))
+    payload["source"] = payload.get("source") or payload.get("product_name") or "local-demo"
+    payload["product_name"] = payload.get("product_name") or payload["source"]
+    payload["product_category"] = payload.get("product_category") or payload["source"]
+    payload["artifacts"] = artifact_items
+    payload["threat_analysis"] = payload.get("threat_analysis") or {
+        "risk_score": enrichment.get("risk_score"),
+        "confidence_score": enrichment.get("confidence"),
+        "explanation": enrichment.get("explanation"),
+        "mitre_attack": _mitre_items(enrichment.get("mitre")),
+        "action_plan": [
+            "Validate raw event and affected asset/user context.",
+            "Contain the affected host, user, or indicator if risk remains high.",
+            "Create a ticket and track remediation to closure.",
+            "Resolve the alert after evidence and response actions are documented.",
+        ],
+    }
+    payload["enrichment_context"] = payload.get("enrichment_context") or {
+        "asset": {
+            "name": payload.get("target") or "unknown",
+            "criticality": "High" if payload.get("severity") in {"Critical", "High"} else "Medium",
+            "last_seen": payload.get("first_seen_time") or _now(),
+        },
+        "indicator": {
+            "summary": ", ".join(item.get("value") for item in artifact_items[:3]) or "No indicator extracted",
+            "reputation": "Suspicious" if payload.get("severity") in {"Critical", "High"} else "Unknown",
+        },
+        "identity": {
+            "user": payload.get("target") if "@" in str(payload.get("target")) else "not applicable",
+            "risk": payload.get("severity") or "Unknown",
+        },
+    }
+    payload["linked_case"] = case if isinstance(case, dict) else None
+    payload["linked_campaigns"] = payload.get("linked_campaigns") or []
+    payload["recommended_actions"] = _action_buttons(payload.get("recommended_actions"))
+    payload["resolution_guidance"] = payload.get("resolution_guidance") or {
+        "headline": "Follow the local SOC triage path.",
+        "recommendation": "Review enrichment, contain risky assets or indicators, create a ticket, then resolve after response evidence is recorded.",
+        "next_action": "create_ticket",
+    }
+    payload["response_jobs"] = [
+        job for job in _read_items("response_jobs")
+        if job.get("target_rowid") in {payload.get("rowid"), payload.get("linked_case")}
+    ] if include_detail else payload.get("response_jobs", [])
+    payload["raw_event"] = payload.get("raw_event") or {"source": payload["source"], "title": payload.get("title"), "target": payload.get("target")}
+    return payload
+
+
+def _normalize_case(item: dict, include_detail: bool = False) -> dict:
+    payload = dict(item)
+    alerts = [_normalize_alert(alert) for alert in _read_items("alerts") if alert.get("rowid") in set(payload.get("linked_alerts") or [])]
+    playbooks = [playbook for playbook in _read_items("playbooks") if playbook.get("source_rowid") == payload.get("rowid")]
+    messages = [message for message in _read_items("messages") if message.get("target_rowid") == payload.get("rowid")]
+    payload["linked_alerts"] = len(payload.get("linked_alerts") or [])
+    payload["playbook"] = playbooks[0].get("name") if playbooks else payload.get("playbook")
+    if include_detail:
+        payload["related_alerts"] = alerts
+        payload["alerts"] = alerts
+        payload["linked_playbooks"] = playbooks
+        payload["activity_timeline"] = messages
+        payload["attack_timeline"] = [
+            {
+                "rowid": alert.get("rowid"),
+                "type": "alert",
+                "severity": alert.get("severity"),
+                "title": alert.get("title"),
+                "summary": alert.get("summary"),
+                "ts": alert.get("first_seen_time"),
+            }
+            for alert in alerts
+        ]
+        artifact_items = []
+        for alert in alerts:
+            artifact_items.extend(alert.get("artifacts") or [])
+        payload["artifact_summary"] = {
+            "actors": [item for item in artifact_items if item.get("type") in {"Email", "Domain", "IP Address"}],
+            "targets": [{"rowid": f"target-{index}", "value": value} for index, value in enumerate(payload.get("linked_assets") or [])],
+            "related": artifact_items,
+        }
+        payload["linked_assets"] = [
+            {
+                "rowid": f"asset-{index}",
+                "hostname": value,
+                "status": "Online",
+                "owner": "Local SOC",
+                "criticality": payload.get("priority") or "Medium",
+            }
+            for index, value in enumerate(payload.get("linked_assets") or [])
+        ]
+        payload["assignment"] = {
+            "owner": payload.get("owner"),
+            "assigned": bool(payload.get("owner")),
+        }
+        payload["sla"] = {
+            "target_minutes": 60,
+            "elapsed_minutes": 0,
+            "remaining_minutes": 60,
+            "breached": False,
+        }
+    return payload
+
+
 def _empty_overview():
-    alerts = _read_items("alerts")
-    cases = _read_items("cases")
+    alerts = [_normalize_alert(item) for item in _read_items("alerts")]
+    cases = [_normalize_case(item) for item in _read_items("cases")]
     playbooks = _read_items("playbooks")
     messages = _read_items("messages")
     assets = _read_items("assets")
@@ -305,24 +486,33 @@ class LocalDevOverviewView(BaseView):
 
 class _ListRetrieveView(BaseView):
     store_name = ""
+    normalizer = None
 
     def list(self, request, **kwargs):
         _require_local_dev_api()
         query = request.query_params.get("q", "").strip().lower()
-        items = [item for item in _read_items(self.store_name) if _matches_query(item, query)]
+        items = []
+        for item in _read_items(self.store_name):
+            payload = self.normalizer(item) if self.normalizer else item
+            if _matches_query(payload, query):
+                items.append(payload)
         return Response(data_return(200, items, "Success", "Success"))
 
     def retrieve(self, request, pk=None, **kwargs):
         _require_local_dev_api()
-        return Response(data_return(200, _find_item(_read_items(self.store_name), pk), "Success", "Success"))
+        item = _find_item(_read_items(self.store_name), pk)
+        payload = self.normalizer(item, include_detail=True) if self.normalizer else item
+        return Response(data_return(200, payload, "Success", "Success"))
 
 
 class LocalDevAlertsView(_ListRetrieveView):
     store_name = "alerts"
+    normalizer = staticmethod(_normalize_alert)
 
 
 class LocalDevCasesView(_ListRetrieveView):
     store_name = "cases"
+    normalizer = staticmethod(_normalize_case)
 
 
 class LocalDevCampaignsView(_ListRetrieveView):
